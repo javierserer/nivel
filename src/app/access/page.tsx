@@ -294,11 +294,10 @@ export default function AccessPage() {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
       >
-        ¿No tienes invitación?{' '}
-        <a href="/#waitlist" className="text-gold/60 hover:text-gold transition underline">
-          Déjanos tu email
-        </a>{' '}
-        y reza.
+        Solo puedes entrar con una invitación.{' '}
+        <a href="/" className="text-neutral-500 hover:text-neutral-300 transition underline">
+          Volver
+        </a>
       </motion.p>
     </main>
   )

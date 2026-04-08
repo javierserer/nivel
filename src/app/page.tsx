@@ -197,7 +197,7 @@ function Hero() {
           >
             <a
               href="/access"
-              className="px-6 py-3.5 rounded-full bg-gold text-black font-bold text-base hover:bg-gold-light transition hover:scale-105 active:scale-95 text-center"
+              className="px-8 py-3.5 rounded-full bg-gold text-black font-bold text-base hover:bg-gold-light transition hover:scale-105 active:scale-95 text-center"
             >
               Tengo una invitación →
             </a>
@@ -205,7 +205,7 @@ function Hero() {
               href="#como-funciona"
               className="px-6 py-3.5 rounded-full border border-white/15 text-white font-semibold text-base hover:bg-white/5 transition text-center"
             >
-              Quiero que me inviten
+              Cómo funciona
             </a>
           </motion.div>
 
@@ -1072,9 +1072,6 @@ function Numbers() {
    ================================================================ */
 
 function InviteCTA() {
-  const [email, setEmail] = useState('')
-  const [submitted, setSubmitted] = useState(false)
-
   return (
     <section id="waitlist" className="py-24 sm:py-32 relative">
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gold/[0.03] to-transparent pointer-events-none" />
@@ -1105,72 +1102,15 @@ function InviteCTA() {
         </FadeIn>
 
         <FadeIn delay={0.3}>
-          <div className="mt-10 flex flex-col gap-4 max-w-md mx-auto">
-            <a
-              href="/access"
-              className="w-full py-4 rounded-xl bg-gold text-black font-bold text-base hover:bg-gold-light transition hover:scale-[1.02] active:scale-[0.98] text-center"
-            >
-              Tengo una invitación →
-            </a>
-
-            <div className="bg-card/50 border border-border rounded-xl p-5">
-              <p className="text-sm text-neutral-400 mb-3">
-                ¿No tienes? Deja tu email.
-                <span className="text-neutral-600"> Si alguien te invita, te avisamos.</span>
-              </p>
-              {!submitted ? (
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    if (email) setSubmitted(true)
-                  }}
-                >
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
-                    className="flex-1 px-4 py-2.5 rounded-lg bg-background border border-border text-white text-sm placeholder-neutral-600 focus:outline-none focus:border-gold/50 transition"
-                    required
-                  />
-                  <button
-                    type="submit"
-                    className="px-4 py-2.5 rounded-lg border border-gold/30 text-gold text-sm font-semibold hover:bg-gold/5 transition shrink-0"
-                  >
-                    Avisar
-                  </button>
-                </form>
-              ) : (
-                <motion.p
-                  className="text-sm text-emerald-400 font-medium py-2"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                >
-                  ✓ Si alguien te invita, serás el primero en saberlo
-                </motion.p>
-              )}
-            </div>
-          </div>
-        </FadeIn>
-
-        <FadeIn delay={0.45}>
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <div className="flex -space-x-2">
-              {['🧔', '👩', '🧑‍🦱', '👨‍🦰'].map((emoji, i) => (
-                <div
-                  key={i}
-                  className="w-7 h-7 rounded-full bg-card border-2 border-background flex items-center justify-center text-xs"
-                >
-                  {emoji}
-                </div>
-              ))}
-            </div>
-            <p className="text-sm text-neutral-500">
-              <span className="text-white font-medium">4.847</span> dentro ·{' '}
-              <span className="text-gold font-medium">Solo por invitación</span>
-            </p>
-          </div>
+          <a
+            href="/access"
+            className="inline-block mt-10 px-10 py-4 rounded-xl bg-gold text-black font-bold text-lg hover:bg-gold-light transition hover:scale-[1.02] active:scale-[0.98]"
+          >
+            Tengo una invitación →
+          </a>
+          <p className="mt-4 text-sm text-neutral-600">
+            ¿No tienes? Consigue que alguien te invite.
+          </p>
         </FadeIn>
       </div>
     </section>
