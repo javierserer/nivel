@@ -93,7 +93,10 @@ function AccessContent() {
 
     if (signUpErr) {
       if (signUpErr.message?.includes('already registered')) {
-        const { error: otpErr } = await supabase.auth.signInWithOtp({ email })
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        })
         if (otpErr) {
           setError('Error al enviar enlace de acceso')
           setLoading(false)
@@ -154,7 +157,10 @@ function AccessContent() {
     setLoading(true)
     setError('')
 
-    const { error: otpErr } = await supabase.auth.signInWithOtp({ email })
+    const { error: otpErr } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    })
     if (otpErr) {
       setError('Error al enviar enlace')
       setLoading(false)
