@@ -51,7 +51,7 @@ function Navbar() {
             Squads
           </a>
           <a
-            href="#join"
+            href="/access"
             className="px-4 py-2 text-sm font-semibold rounded-full bg-accent text-white hover:bg-accent-light transition"
           >
             Únete
@@ -59,35 +59,6 @@ function Navbar() {
         </div>
       </div>
     </nav>
-  )
-}
-
-/* ================================================================
-   MINI STREAK GRID (for hero phone mockup)
-   ================================================================ */
-
-function MiniStreakGrid({ inView }: { inView: boolean }) {
-  const pattern = [1,1,0,1,1,1,1, 1,0,1,1,1,1,1, 1,1,1,0,1,1,1, 1,1,1,1,1,0,0]
-  return (
-    <div className="flex gap-[2px]">
-      {Array.from({ length: 4 }).map((_, w) => (
-        <div key={w} className="flex flex-col gap-[2px]">
-          {Array.from({ length: 7 }).map((_, d) => {
-            const idx = w * 7 + d
-            const on = pattern[idx]
-            return (
-              <motion.div
-                key={d}
-                className={`w-[7px] h-[7px] rounded-[1px] ${on ? 'bg-accent' : 'bg-gray-200'}`}
-                initial={{ opacity: 0, scale: 0 }}
-                animate={inView ? { opacity: 1, scale: 1 } : {}}
-                transition={{ delay: 1.0 + idx * 0.008 }}
-              />
-            )
-          })}
-        </div>
-      ))}
-    </div>
   )
 }
 
@@ -260,7 +231,9 @@ function Hero() {
                   {[
                     { name: 'Gym 1h', done: true, pts: 50 },
                     { name: 'Leer 30min', done: true, pts: 30 },
-                    { name: 'Meditar', done: false, pts: 15 },
+                    { name: 'Sin alcohol', done: true, pts: 30 },
+                    { name: 'Meditar 10min', done: false, pts: 15 },
+                    { name: 'Madrugar', done: false, pts: 50 },
                   ].map((h, i) => (
                     <div key={i} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${h.done ? 'bg-green-50' : 'bg-gray-50'}`}>
                       <div className={`w-3.5 h-3.5 rounded flex items-center justify-center ${h.done ? 'bg-green-500 text-white' : 'border border-gray-300'}`}>

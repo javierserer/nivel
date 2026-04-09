@@ -1,79 +1,165 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Logo } from '@/components/shared'
-import { Heart, Flame, Check, ChevronRight, TrendingUp } from 'lucide-react'
+import { Heart, Flame, Check, ChevronRight, TrendingUp, Loader2 } from 'lucide-react'
+import { createClient } from '@/lib/supabase/client'
 
-const INITIAL_HABITS = [
-  { id: 1, name: 'Gym 1h', pts: 50, done: false },
-  { id: 2, name: 'Leer 30min', pts: 30, done: true },
-  { id: 3, name: 'Sin alcohol', pts: 30, done: true },
-  { id: 4, name: 'Meditar 10min', pts: 15, done: false },
-]
+interface HabitWithLog {
+  id: string
+  name: string
+  pts: number
+  done: boolean
+  log_id: string | null
+}
 
-const FEED = [
-  { name: 'Carlos M.', action: 'Gym 1h', pts: 50, time: 'Hace 12min', kudos: 8, streak: 21 },
-  { name: 'María L.', action: 'Meditación 15min', pts: 30, time: 'Hace 45min', kudos: 5 },
-  { name: 'David R.', action: 'Leer 30min', pts: 30, time: 'Hace 2h', kudos: 3 },
-]
+interface FeedItem {
+  id: string
+  user_id: string
+  type: string
+  payload: { habit_name?: string; pts?: number; new_level?: number }
+  created_at: string
+  profiles: { display_name: string | null; avatar_url: string | null }
+  kudos_count: number
+}
 
 export default function Dashboard() {
-  const [habits, setHabits] = useState(INITIAL_HABITS)
-  const [level] = useState(12)
-  const [xp] = useState(1440)
-  const [xpNeeded] = useState(2000)
+  const supabase = createClient()
+  const [habits, setHabits] = useState<HabitWithLog[]>([])
+  const [feed, setFeed] = useState<FeedItem[]>([])
+  const [profile, setProfile] = useState<{ display_name: string | null; level: number; xp: number; streak: number } | null>(null)
+  const [loading, setLoading] = useState(true)
   const [earnedToast, setEarnedToast] = useState<string | null>(null)
-  const [kudosGiven, setKudosGiven] = useState<number[]>([])
+  const [kudosGiven, setKudosGiven] = useState<Set<string>>(new Set())
 
-  const toggleHabit = (id: number) => {
-    setHabits((prev) =>
-      prev.map((h) => {
-        if (h.id === id) {
-          const newDone = !h.done
-          if (newDone) {
-            setEarnedToast(`+${h.pts}`)
-            setTimeout(() => setEarnedToast(null), 1200)
-          }
-          return { ...h, done: newDone }
-        }
-        return h
+  const today = new Date().toISOString().split('T')[0]
+
+  const fetchData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const [profileRes, habitsRes, logsRes, feedRes] = await Promise.all([
+      supabase.from('profiles').select('display_name, level, xp, streak').eq('id', user.id).single(),
+      supabase.from('habits').select('id, name, pts').eq('user_id', user.id).eq('active', true).order('created_at'),
+      supabase.from('habit_logs').select('id, habit_id, completed').eq('user_id', user.id).eq('log_date', today),
+      supabase
+        .from('activity')
+        .select('id, user_id, type, payload, created_at, profiles!activity_user_id_fkey(display_name, avatar_url)')
+        .in('squad_id', (await supabase.from('squad_members').select('squad_id').eq('user_id', user.id)).data?.map(s => s.squad_id) || [])
+        .neq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10),
+    ])
+
+    setProfile(profileRes.data)
+
+    if (habitsRes.data) {
+      const merged = habitsRes.data.map(h => {
+        const log = logsRes.data?.find(l => l.habit_id === h.id)
+        return { ...h, done: log?.completed || false, log_id: log?.id || null }
       })
-    )
+      setHabits(merged)
+    }
+
+    if (feedRes.data) {
+      const feedWithKudos = await Promise.all(
+        feedRes.data.map(async (item) => {
+          const { count } = await supabase
+            .from('kudos')
+            .select('*', { count: 'exact', head: true })
+            .eq('activity_id', item.id)
+          return {
+            ...item,
+            profiles: item.profiles as unknown as { display_name: string | null; avatar_url: string | null },
+            kudos_count: count || 0,
+          }
+        })
+      )
+      setFeed(feedWithKudos)
+    }
+
+    setLoading(false)
+  }, [supabase, today])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const toggleHabit = async (habit: HabitWithLog) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    const newDone = !habit.done
+    setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, done: newDone } : h))
+
+    if (newDone) {
+      setEarnedToast(`+${habit.pts}`)
+      setTimeout(() => setEarnedToast(null), 1200)
+
+      const { data } = await supabase
+        .from('habit_logs')
+        .insert({ habit_id: habit.id, user_id: user.id, log_date: today, completed: true, pts_earned: habit.pts })
+        .select('id')
+        .single()
+
+      if (data) {
+        setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, log_id: data.id } : h))
+      }
+
+      const { data: freshProfile } = await supabase.from('profiles').select('level, xp, streak').eq('id', user.id).single()
+      if (freshProfile) setProfile(p => p ? { ...p, ...freshProfile } : p)
+    } else if (habit.log_id) {
+      await supabase.from('habit_logs').delete().eq('id', habit.log_id)
+      setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, log_id: null } : h))
+    }
   }
 
-  const giveKudos = (idx: number) => {
-    if (!kudosGiven.includes(idx)) setKudosGiven((k) => [...k, idx])
+  const giveKudos = async (activityId: string) => {
+    if (kudosGiven.has(activityId)) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setKudosGiven(prev => new Set(prev).add(activityId))
+    await supabase.from('kudos').insert({ from_user: user.id, to_user: feed.find(f => f.id === activityId)!.user_id, activity_id: activityId })
+    setFeed(prev => prev.map(f => f.id === activityId ? { ...f, kudos_count: f.kudos_count + 1 } : f))
   }
 
-  const todayEarned = habits.filter((h) => h.done).reduce((sum, h) => sum + h.pts, 0)
-  const completedCount = habits.filter((h) => h.done).length
+  const xpForLevel = (lvl: number) => Math.floor(500 * Math.pow(1.15, lvl - 1))
+  const xpNeeded = profile ? xpForLevel(profile.level) : 2000
+  const todayEarned = habits.filter(h => h.done).reduce((s, h) => s + h.pts, 0)
+  const completedCount = habits.filter(h => h.done).length
   const remaining = habits.length - completedCount
+  const greeting = new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 20 ? 'Buenas tardes' : 'Buenas noches'
 
   const motivMsg = remaining === 0
     ? '¡Día perfecto! Todos completados'
     : remaining <= 2
-      ? `María ya completó los suyos. Te quedan ${remaining}.`
+      ? `Te quedan ${remaining} para el día perfecto`
       : `Te quedan ${remaining} para el día perfecto`
+
+  if (loading) {
+    return (
+      <div className="pt-14 px-5 flex justify-center">
+        <Loader2 className="w-6 h-6 text-accent animate-spin mt-20" />
+      </div>
+    )
+  }
 
   return (
     <div className="pt-14 px-5">
-      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-xs text-muted mb-0.5">Buenos días</p>
-          <h1 className="text-xl font-bold">Javier</h1>
+          <p className="text-xs text-muted mb-0.5">{greeting}</p>
+          <h1 className="text-xl font-bold">{profile?.display_name || 'Nivel'}</h1>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 bg-white border border-border rounded-full px-3 py-1.5 shadow-sm">
             <Flame className="w-3.5 h-3.5 text-accent" />
-            <span className="text-xs font-bold text-accent">14d</span>
+            <span className="text-xs font-bold text-accent">{profile?.streak || 0}d</span>
           </div>
           <Logo size="sm" />
         </div>
       </div>
 
-      {/* Compact Level + XP */}
       <motion.div
         className="bg-white rounded-xl px-4 py-3 border border-border shadow-sm mb-3 relative overflow-hidden"
         initial={{ opacity: 0, y: 20 }}
@@ -81,17 +167,17 @@ export default function Dashboard() {
         transition={{ type: 'spring', stiffness: 80, damping: 18 }}
       >
         <div className="flex items-center gap-3">
-          <span className="text-2xl font-extrabold text-accent">{level}</span>
+          <span className="text-2xl font-extrabold text-accent">{profile?.level || 1}</span>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted">Nivel {level + 1}</span>
-              <span className="text-[10px] text-muted tabular-nums">{xp.toLocaleString()} / {xpNeeded.toLocaleString()} XP</span>
+              <span className="text-[10px] text-muted">Nivel {(profile?.level || 1) + 1}</span>
+              <span className="text-[10px] text-muted tabular-nums">{(profile?.xp || 0).toLocaleString()} / {xpNeeded.toLocaleString()} XP</span>
             </div>
             <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
               <motion.div
                 className="h-full bg-accent rounded-full"
                 initial={{ width: 0 }}
-                animate={{ width: `${(xp / xpNeeded) * 100}%` }}
+                animate={{ width: `${((profile?.xp || 0) / xpNeeded) * 100}%` }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               />
             </div>
@@ -117,27 +203,33 @@ export default function Dashboard() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Motivational nudge */}
-      <motion.p
-        className="text-[11px] text-accent font-medium text-center mb-5"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.3 }}
-      >
-        {motivMsg}
-      </motion.p>
+      {habits.length > 0 && (
+        <motion.p
+          className="text-[11px] text-accent font-medium text-center mb-5"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.3 }}
+        >
+          {motivMsg}
+        </motion.p>
+      )}
 
-      {/* TODAY'S HABITS — The primary action */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Hoy</h2>
           <span className="text-[10px] text-muted">{completedCount}/{habits.length}</span>
         </div>
+        {habits.length === 0 && (
+          <div className="text-center py-8">
+            <p className="text-sm text-muted mb-2">Aún no tienes hábitos</p>
+            <a href="/app/habits" className="text-sm text-accent font-semibold">Añadir hábitos</a>
+          </div>
+        )}
         <div className="space-y-2">
-          {habits.map((h) => (
+          {habits.map(h => (
             <motion.button
               key={h.id}
-              onClick={() => toggleHabit(h.id)}
+              onClick={() => toggleHabit(h)}
               className={`w-full flex items-center justify-between rounded-xl px-4 py-3.5 text-left transition border shadow-sm ${
                 h.done ? 'bg-success-bg border-success/20' : 'bg-white border-border hover:border-accent/20'
               }`}
@@ -164,52 +256,70 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Squad feed */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Tu squad</h2>
-          <a href="/app/squad" className="text-[10px] text-accent font-semibold flex items-center gap-0.5">
-            Ver todo <ChevronRight className="w-3 h-3" />
-          </a>
-        </div>
-        <div className="space-y-2">
-          {FEED.map((item, i) => (
-            <div key={i} className="bg-white border border-border rounded-xl px-4 py-3 shadow-sm">
-              <div className="flex items-center gap-2.5 mb-1.5">
-                <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                  {item.name[0]}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-semibold">{item.name}</span>
-                    {item.streak && (
-                      <span className="text-[10px] text-accent font-bold flex items-center gap-0.5">
-                        <Flame className="w-2.5 h-2.5" /> {item.streak}d
-                      </span>
-                    )}
+      {feed.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Tu squad</h2>
+            <a href="/app/squad" className="text-[10px] text-accent font-semibold flex items-center gap-0.5">
+              Ver todo <ChevronRight className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="space-y-2">
+            {feed.map(item => {
+              const name = item.profiles?.display_name || 'Alguien'
+              const actionText = item.type === 'habit_completed'
+                ? item.payload.habit_name || 'un hábito'
+                : item.type === 'level_up'
+                  ? `subió al nivel ${item.payload.new_level}`
+                  : item.type
+              const pts = item.payload.pts || 0
+              const timeAgo = getTimeAgo(item.created_at)
+
+              return (
+                <div key={item.id} className="bg-white border border-border rounded-xl px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-2.5 mb-1.5">
+                    <div className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center text-[10px] font-bold text-gray-500 overflow-hidden">
+                      {item.profiles?.avatar_url ? (
+                        <img src={item.profiles.avatar_url} alt="" className="w-full h-full object-cover" />
+                      ) : name[0]}
+                    </div>
+                    <div className="flex-1">
+                      <span className="text-xs font-semibold">{name}</span>
+                    </div>
+                    <span className="text-[10px] text-muted">{timeAgo}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-success" />
+                      <span className="text-sm font-medium">{actionText}</span>
+                      {pts > 0 && <span className="text-xs text-accent font-bold">+{pts}</span>}
+                    </div>
+                    <motion.button
+                      onClick={() => giveKudos(item.id)}
+                      className={`flex items-center gap-1 transition ${kudosGiven.has(item.id) ? 'text-accent' : 'text-gray-400 hover:text-accent'}`}
+                      whileTap={{ scale: 1.3 }}
+                    >
+                      <Heart className={`w-4 h-4 ${kudosGiven.has(item.id) ? 'fill-accent' : ''}`} />
+                      <span className="text-[10px] font-medium">{item.kudos_count}</span>
+                    </motion.button>
                   </div>
                 </div>
-                <span className="text-[10px] text-muted">{item.time}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-success" />
-                  <span className="text-sm font-medium">{item.action}</span>
-                  <span className="text-xs text-accent font-bold">+{item.pts}</span>
-                </div>
-                <motion.button
-                  onClick={() => giveKudos(i)}
-                  className={`flex items-center gap-1 transition ${kudosGiven.includes(i) ? 'text-accent' : 'text-gray-400 hover:text-accent'}`}
-                  whileTap={{ scale: 1.3 }}
-                >
-                  <Heart className={`w-4 h-4 ${kudosGiven.includes(i) ? 'fill-accent' : ''}`} />
-                  <span className="text-[10px] font-medium">{item.kudos + (kudosGiven.includes(i) ? 1 : 0)}</span>
-                </motion.button>
-              </div>
-            </div>
-          ))}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
+}
+
+function getTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'Ahora'
+  if (mins < 60) return `Hace ${mins}min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `Hace ${hours}h`
+  const days = Math.floor(hours / 24)
+  return `Hace ${days}d`
 }

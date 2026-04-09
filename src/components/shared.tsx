@@ -1,18 +1,9 @@
 'use client'
 
-import { motion, useInView, useSpring, useMotionValue } from 'framer-motion'
-import { useRef, useEffect, type ReactNode } from 'react'
+import { motion, useInView } from 'framer-motion'
+import { useRef, type ReactNode } from 'react'
 
 export const SPRING = { type: 'spring' as const, stiffness: 80, damping: 18 }
-export const SPRING_SNAPPY = { type: 'spring' as const, stiffness: 200, damping: 22 }
-
-export function Pts({ value, className = '' }: { value: number | string; className?: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 font-bold tabular-nums ${className}`}>
-      {value} <span className="text-[0.7em] font-semibold text-muted">pts</span>
-    </span>
-  )
-}
 
 export function Logo({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' }) {
   const cls = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' }[size]
@@ -51,22 +42,3 @@ export function FadeIn({
   )
 }
 
-export function CountUp({ target, prefix = '', suffix = '' }: { target: number; prefix?: string; suffix?: string }) {
-  const ref = useRef<HTMLSpanElement>(null)
-  const inView = useInView(ref, { once: true })
-  const motionVal = useMotionValue(0)
-  const springVal = useSpring(motionVal, { stiffness: 50, damping: 20 })
-
-  useEffect(() => {
-    if (inView) motionVal.set(target)
-  }, [inView, target, motionVal])
-
-  useEffect(() => {
-    const unsub = springVal.on('change', (v) => {
-      if (ref.current) ref.current.textContent = `${prefix}${Math.round(v).toLocaleString('es-ES')}${suffix}`
-    })
-    return unsub
-  }, [springVal, prefix, suffix])
-
-  return <span ref={ref}>{prefix}0{suffix}</span>
-}

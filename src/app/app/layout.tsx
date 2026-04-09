@@ -2,8 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
 import { Home, Target, Users, BarChart3, User } from 'lucide-react'
+import { registerServiceWorker } from '@/lib/sw'
 
 const tabs = [
   { href: '/app', label: 'Feed', icon: Home },
@@ -15,6 +16,11 @@ const tabs = [
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const isOnboarding = pathname === '/app/onboarding'
+
+  useEffect(() => { registerServiceWorker() }, [])
+
+  if (isOnboarding) return <>{children}</>
 
   return (
     <div className="min-h-screen bg-surface">

@@ -1,13 +1,12 @@
 'use client'
 
 import { Suspense, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Logo } from '@/components/shared'
-import { Lock, Mail, ArrowLeft, Flame, Check, Clock } from 'lucide-react'
+import { Logo, SPRING } from '@/components/shared'
+import { Lock, Mail, ArrowLeft, Flame, Check, Clock, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-
-const SPRING = { type: 'spring' as const, stiffness: 200, damping: 22 }
+import { createClient } from '@/lib/supabase/client'
 
 export default function AccessPage() {
   return (
@@ -25,6 +24,7 @@ type Step = 'invite' | 'email' | 'done' | 'waitlist' | 'waitlist-done'
 
 function AccessContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const startOnWaitlist = searchParams.get('waitlist') === '1'
 
   const [step, setStep] = useState<Step>(startOnWaitlist ? 'waitlist' : 'invite')
@@ -33,34 +33,128 @@ function AccessContent() {
   const [error, setError] = useState('')
   const [invitedBy, setInvitedBy] = useState('')
   const [isFounding, setIsFounding] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [invitationId, setInvitationId] = useState<string | null>(null)
 
-  const handleInviteCode = (e: React.FormEvent) => {
+  const supabase = createClient()
+
+  const handleInviteCode = async (e: React.FormEvent) => {
     e.preventDefault()
     const code = inviteCode.trim().toUpperCase()
-    if (code.length < 6) {
-      setError('Código inválido')
+    if (code.length < 4) { setError('Código inválido'); return }
+
+    setLoading(true)
+    setError('')
+
+    const { data, error: err } = await supabase
+      .from('invitations')
+      .select('id, owner_id, profiles!invitations_owner_id_fkey(display_name, username)')
+      .eq('code', code)
+      .is('used_by', null)
+      .single()
+
+    setLoading(false)
+
+    if (err || !data) {
+      setError('Código inválido o ya utilizado')
       return
     }
-    setError('')
-    if (code === 'FOUNDING') { setIsFounding(true); setInvitedBy('Equipo NIVEL') }
-    else if (code === 'NIVEL1') setInvitedBy('Carlos M.')
-    else if (code === 'INVITE') setInvitedBy('María L.')
-    else setInvitedBy('Un miembro de NIVEL')
+
+    setInvitationId(data.id)
+    const ownerProfile = data.profiles as unknown as { display_name: string | null; username: string | null }
+    const ownerName = ownerProfile?.display_name || ownerProfile?.username || 'Un miembro de NIVEL'
+    setInvitedBy(ownerName)
+
+    if (code === 'FOUNDING') setIsFounding(true)
     setStep('email')
   }
 
-  const handleEmail = (e: React.FormEvent) => {
+  const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.includes('@') || !email.includes('.')) { setError('Email inválido'); return }
+
+    setLoading(true)
     setError('')
-    setStep('done')
+
+    const password = crypto.randomUUID()
+
+    const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (signUpErr) {
+      if (signUpErr.message?.includes('already registered')) {
+        const { error: otpErr } = await supabase.auth.signInWithOtp({ email })
+        if (otpErr) {
+          setError('Error al enviar enlace de acceso')
+          setLoading(false)
+          return
+        }
+        setError('')
+        setLoading(false)
+        setStep('done')
+        return
+      }
+      setError(signUpErr.message)
+      setLoading(false)
+      return
+    }
+
+    if (signUpData.session && invitationId) {
+      await supabase
+        .from('invitations')
+        .update({ used_by: signUpData.user!.id, used_at: new Date().toISOString() })
+        .eq('id', invitationId)
+    }
+
+    setLoading(false)
+
+    if (signUpData.session) {
+      router.push('/app/onboarding')
+    } else {
+      setStep('done')
+    }
   }
 
-  const handleWaitlist = (e: React.FormEvent) => {
+  const handleWaitlist = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email.includes('@') || !email.includes('.')) { setError('Email inválido'); return }
+
+    setLoading(true)
     setError('')
+
+    const { error: err } = await supabase
+      .from('waitlist')
+      .insert({ email })
+
+    setLoading(false)
+
+    if (err) {
+      if (err.code === '23505') { setError('Ya estás en la lista'); return }
+      setError('Error al guardar')
+      return
+    }
+
     setStep('waitlist-done')
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!email.includes('@') || !email.includes('.')) { setError('Email inválido'); return }
+
+    setLoading(true)
+    setError('')
+
+    const { error: otpErr } = await supabase.auth.signInWithOtp({ email })
+    if (otpErr) {
+      setError('Error al enviar enlace')
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    setStep('done')
   }
 
   return (
@@ -122,10 +216,11 @@ function AccessContent() {
 
               <motion.button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
                 whileTap={{ scale: 0.97 }}
               >
-                Verificar código
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Verificar código'}
               </motion.button>
 
               <button
@@ -187,10 +282,11 @@ function AccessContent() {
 
               <motion.button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
                 whileTap={{ scale: 0.97 }}
               >
-                Crear cuenta
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Crear cuenta'}
               </motion.button>
 
               <button type="button" onClick={() => setStep('invite')} className="w-full text-center text-xs text-muted hover:text-foreground transition">
@@ -208,20 +304,13 @@ function AccessContent() {
               className="text-center space-y-4"
             >
               <div className="w-14 h-14 rounded-2xl bg-success-bg border border-success/20 flex items-center justify-center mx-auto mb-3">
-                <Check className="w-6 h-6 text-success" />
+                <Mail className="w-6 h-6 text-success" />
               </div>
-              <h2 className="text-xl font-bold">Estás dentro</h2>
+              <h2 className="text-xl font-bold">Revisa tu email</h2>
               <p className="text-sm text-muted">
                 Hemos enviado un enlace a <span className="text-foreground font-medium">{email}</span>
               </p>
-              <p className="text-xs text-muted">Revisa tu bandeja de entrada para activar tu cuenta.</p>
-
-              <Link
-                href="/app"
-                className="inline-flex items-center gap-2 mt-4 px-8 py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition hover:bg-accent-light"
-              >
-                Ir al dashboard
-              </Link>
+              <p className="text-xs text-muted">Haz click en el enlace para entrar.</p>
             </motion.div>
           )}
 
@@ -260,10 +349,11 @@ function AccessContent() {
 
               <motion.button
                 type="submit"
-                className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-bold text-sm transition"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
                 whileTap={{ scale: 0.97 }}
               >
-                Avisadme
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Avisadme'}
               </motion.button>
 
               <button
