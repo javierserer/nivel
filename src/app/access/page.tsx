@@ -3,18 +3,17 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Logo } from '@/components/shared'
-import { Lock, Phone, KeyRound, ArrowLeft, Flame, Check } from 'lucide-react'
+import { Lock, Mail, ArrowLeft, Flame, Check } from 'lucide-react'
 import Link from 'next/link'
 
 const SPRING = { type: 'spring' as const, stiffness: 200, damping: 22 }
 
-type Step = 'invite' | 'phone' | 'otp'
+type Step = 'invite' | 'email' | 'done'
 
 export default function AccessPage() {
   const [step, setStep] = useState<Step>('invite')
   const [inviteCode, setInviteCode] = useState('')
-  const [phone, setPhone] = useState('')
-  const [otp, setOtp] = useState('')
+  const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [invitedBy, setInvitedBy] = useState('')
   const [isFounding, setIsFounding] = useState(false)
@@ -31,20 +30,14 @@ export default function AccessPage() {
     else if (code === 'NIVEL1') setInvitedBy('Carlos M.')
     else if (code === 'INVITE') setInvitedBy('María L.')
     else setInvitedBy('Un miembro de NIVEL')
-    setStep('phone')
+    setStep('email')
   }
 
-  const handlePhone = (e: React.FormEvent) => {
+  const handleEmail = (e: React.FormEvent) => {
     e.preventDefault()
-    if (phone.length < 9) { setError('Número inválido'); return }
+    if (!email.includes('@') || !email.includes('.')) { setError('Email inválido'); return }
     setError('')
-    setStep('otp')
-  }
-
-  const handleOtp = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (otp.length < 6) { setError('Código inválido'); return }
-    window.location.href = '/app'
+    setStep('done')
   }
 
   return (
@@ -59,14 +52,13 @@ export default function AccessPage() {
         <Logo size="lg" />
       </div>
 
-      {/* Step indicator */}
       <div className="flex items-center gap-2 mb-8">
-        {['invite', 'phone', 'otp'].map((s, i) => (
+        {['invite', 'email', 'done'].map((s, i) => (
           <div key={s} className="flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full transition ${
-              step === s ? 'bg-accent' : i < ['invite', 'phone', 'otp'].indexOf(step) ? 'bg-success' : 'bg-gray-200'
+              step === s ? 'bg-accent' : i < ['invite', 'email', 'done'].indexOf(step) ? 'bg-success' : 'bg-gray-200'
             }`} />
-            {i < 2 && <div className={`w-6 h-px ${i < ['invite', 'phone', 'otp'].indexOf(step) ? 'bg-success' : 'bg-gray-200'}`} />}
+            {i < 2 && <div className={`w-6 h-px ${i < ['invite', 'email', 'done'].indexOf(step) ? 'bg-success' : 'bg-gray-200'}`} />}
           </div>
         ))}
       </div>
@@ -113,14 +105,14 @@ export default function AccessPage() {
             </motion.form>
           )}
 
-          {step === 'phone' && (
+          {step === 'email' && (
             <motion.form
-              key="phone"
+              key="email"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={SPRING}
-              onSubmit={handlePhone}
+              onSubmit={handleEmail}
               className="space-y-4"
             >
               <motion.div
@@ -147,65 +139,15 @@ export default function AccessPage() {
                 )}
               </motion.div>
 
-              <div className="flex gap-2">
-                <div className="w-16 bg-surface border border-border rounded-xl px-2 py-3.5 text-center text-sm font-medium text-muted">
-                  +34
-                </div>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => { setPhone(e.target.value.replace(/\D/g, '')); setError('') }}
-                  placeholder="Tu teléfono"
-                  className="flex-1 px-4 py-3.5 bg-surface border border-border rounded-xl text-base placeholder-gray-400 focus:outline-none focus:border-accent/40 transition"
-                  autoFocus
-                  autoComplete="tel"
-                  enterKeyHint="send"
-                />
-              </div>
-
-              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
-
-              <motion.button
-                type="submit"
-                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition"
-                whileTap={{ scale: 0.97 }}
-              >
-                Enviar código SMS
-              </motion.button>
-
-              <button type="button" onClick={() => setStep('invite')} className="w-full text-center text-xs text-muted hover:text-foreground transition">
-                Cambiar código de invitación
-              </button>
-            </motion.form>
-          )}
-
-          {step === 'otp' && (
-            <motion.form
-              key="otp"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={SPRING}
-              onSubmit={handleOtp}
-              className="space-y-4"
-            >
-              <div className="text-center mb-2">
-                <div className="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-3">
-                  <KeyRound className="w-6 h-6 text-accent" />
-                </div>
-                <p className="text-sm text-muted">Código enviado a</p>
-                <p className="text-sm font-semibold">+34 {phone}</p>
-              </div>
-
               <input
-                type="text"
-                inputMode="numeric"
-                value={otp}
-                onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setError('') }}
-                placeholder="000000"
-                className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-center text-2xl font-mono tracking-[0.4em] placeholder-gray-300 focus:outline-none focus:border-accent/40 transition"
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError('') }}
+                placeholder="tu@email.com"
+                className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-center text-base placeholder-gray-400 focus:outline-none focus:border-accent/40 transition"
                 autoFocus
-                autoComplete="one-time-code"
+                autoComplete="email"
+                enterKeyHint="send"
               />
 
               {error && <p className="text-xs text-red-500 text-center">{error}</p>}
@@ -215,13 +157,39 @@ export default function AccessPage() {
                 className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition"
                 whileTap={{ scale: 0.97 }}
               >
-                Entrar
+                Crear cuenta
               </motion.button>
 
-              <button type="button" onClick={() => setStep('phone')} className="w-full text-center text-xs text-muted hover:text-foreground transition">
-                Cambiar número
+              <button type="button" onClick={() => setStep('invite')} className="w-full text-center text-xs text-muted hover:text-foreground transition">
+                Cambiar código de invitación
               </button>
             </motion.form>
+          )}
+
+          {step === 'done' && (
+            <motion.div
+              key="done"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={SPRING}
+              className="text-center space-y-4"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-success-bg border border-success/20 flex items-center justify-center mx-auto mb-3">
+                <Check className="w-6 h-6 text-success" />
+              </div>
+              <h2 className="text-xl font-bold">Estás dentro</h2>
+              <p className="text-sm text-muted">
+                Hemos enviado un enlace a <span className="text-foreground font-medium">{email}</span>
+              </p>
+              <p className="text-xs text-muted">Revisa tu bandeja de entrada para activar tu cuenta.</p>
+
+              <Link
+                href="/app"
+                className="inline-flex items-center gap-2 mt-4 px-8 py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition hover:bg-accent-light"
+              >
+                Ir al dashboard
+              </Link>
+            </motion.div>
           )}
         </AnimatePresence>
       </div>
