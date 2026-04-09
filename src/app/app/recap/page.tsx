@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Flame, TrendingUp, Trophy, Zap, Calendar, Share2 } from 'lucide-react'
+import { Flame, TrendingUp, Trophy, Zap, Calendar, Upload } from 'lucide-react'
 import { WeeklyBars, TrendLine, StreakHeatmap, WeeklyShareCard } from '@/components/charts'
 
 const SPRING = { type: 'spring' as const, stiffness: 80, damping: 18 }
@@ -54,33 +54,34 @@ export default function RecapPage() {
         <span className="text-xs text-muted">Semana {THIS_WEEK.week}</span>
       </div>
 
-      {/* ============ WEEKLY SHARE CARD ============ */}
+      {/* ============ WEEKLY CARD ============ */}
       <motion.div
         className="flex flex-col items-center mb-5"
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={SPRING}
       >
-        <WeeklyShareCard
-          week={THIS_WEEK.week}
-          level={THIS_WEEK.level}
-          streak={THIS_WEEK.streak}
-          pts={THIS_WEEK.balance}
-          pct={completionRate}
-          squadName={THIS_WEEK.squadName}
-          squadPos={THIS_WEEK.squadPosition}
-          dailyPts={THIS_WEEK.dailyPts}
-        />
-        <motion.button
-          className="mt-3 flex items-center gap-2 bg-accent text-white text-xs font-bold px-5 py-2.5 rounded-full shadow-lg shadow-accent/20"
-          whileTap={{ scale: 0.95 }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <Share2 className="w-3.5 h-3.5" />
-          Compartir mi semana
-        </motion.button>
+        <div className="relative">
+          <WeeklyShareCard
+            week={THIS_WEEK.week}
+            level={THIS_WEEK.level}
+            streak={THIS_WEEK.streak}
+            pts={THIS_WEEK.balance}
+            pct={completionRate}
+            squadName={THIS_WEEK.squadName}
+            squadPos={THIS_WEEK.squadPosition}
+            dailyPts={THIS_WEEK.dailyPts}
+          />
+          <motion.button
+            className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition"
+            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6 }}
+          >
+            <Upload className="w-3.5 h-3.5" />
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* KPIs */}

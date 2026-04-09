@@ -6,7 +6,7 @@ import { FadeIn, Logo, SPRING } from '@/components/shared'
 import { WeeklyShareCard } from '@/components/charts'
 import {
   Flame, Heart, Target, BarChart3, Trophy,
-  Check, ArrowRight, Zap, Swords, Share2,
+  Check, ArrowRight, Zap, Swords,
 } from 'lucide-react'
 
 /* ================================================================
@@ -159,24 +159,29 @@ function Hero() {
           </motion.div>
 
           <motion.div
-            className="mt-8 flex items-center gap-3 justify-center lg:justify-start"
+            className="mt-6 flex flex-col items-center lg:items-start gap-4"
             initial={{ opacity: 0 }}
             animate={inView ? { opacity: 1 } : {}}
             transition={{ duration: 0.6, delay: 0.7 }}
           >
-            <div className="flex -space-x-2">
-              {['CA', 'MA', 'JA', 'DA', 'LU'].map((initials, i) => (
-                <div
-                  key={i}
-                  className="w-7 h-7 rounded-full bg-surface border-2 border-white flex items-center justify-center text-[9px] font-bold text-muted"
-                >
-                  {initials}
-                </div>
-              ))}
+            <div className="flex items-center gap-3">
+              <div className="flex -space-x-2">
+                {['CA', 'MA', 'JA', 'DA', 'LU'].map((initials, i) => (
+                  <div
+                    key={i}
+                    className="w-7 h-7 rounded-full bg-surface border-2 border-white flex items-center justify-center text-[9px] font-bold text-muted"
+                  >
+                    {initials}
+                  </div>
+                ))}
+              </div>
+              <p className="text-sm text-muted">
+                <span className="text-foreground font-semibold">4.847</span> personas dentro
+              </p>
             </div>
-            <p className="text-sm text-muted">
-              <span className="text-foreground font-semibold">4.847</span> personas dentro
-            </p>
+            <a href="/access?waitlist=1" className="text-xs text-gray-400 hover:text-muted transition">
+              ¿No tienes invitación?
+            </a>
           </motion.div>
         </div>
 
@@ -407,37 +412,37 @@ function HowItWorks() {
 }
 
 /* ================================================================
-   SHARE YOUR WEEK — the viral moment (replaces ProgressPreview)
+   WEEKLY RECAP — shows the weekly card as part of the experience
    ================================================================ */
 
-function ShareYourWeek() {
+function WeeklyRecap() {
   return (
     <section className="py-24 sm:py-32 bg-surface">
       <div className="max-w-6xl mx-auto px-5">
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           <div className="flex-1 text-center lg:text-left">
             <FadeIn>
-              <p className="text-sm text-accent font-semibold uppercase tracking-widest mb-3">Tu momento</p>
+              <p className="text-sm text-accent font-semibold uppercase tracking-widest mb-3">Cada semana</p>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
-                Comparte tu
+                Tu resumen
                 <br />
-                <span className="text-muted">semana.</span>
+                <span className="text-muted">semanal.</span>
               </h2>
             </FadeIn>
 
             <FadeIn delay={0.15}>
               <p className="mt-6 text-lg text-muted leading-relaxed max-w-md mx-auto lg:mx-0">
-                Cada domingo recibes tu card semanal: nivel, racha, puntos y tu posición en el squad.
-                <span className="text-foreground font-medium"> Hecha para compartir en stories.</span>
+                Cada domingo, NIVEL genera tu card con nivel, racha, puntos y posición en el squad.
+                <span className="text-foreground font-medium"> Tu progreso de un vistazo.</span>
               </p>
             </FadeIn>
 
             <FadeIn delay={0.3}>
               <div className="mt-8 space-y-3 max-w-md mx-auto lg:mx-0">
                 {[
-                  { icon: Share2, text: 'Un toque para compartir', detail: 'Instagram, Twitter, WhatsApp. Tu card, tu progreso.' },
-                  { icon: BarChart3, text: 'Tu progreso visual', detail: 'Puntos por día, nivel, racha y posición en el squad.' },
-                  { icon: Heart, text: 'Kudos de tu squad', detail: 'Cada like de tu equipo aparece. Social proof real.' },
+                  { icon: BarChart3, text: 'Puntos por día', detail: 'Actividad de lunes a domingo en una gráfica.' },
+                  { icon: Flame, text: 'Racha y nivel', detail: 'Tu progreso acumulado semana a semana.' },
+                  { icon: Heart, text: 'Posición en el squad', detail: 'Dónde estás respecto a tu equipo.' },
                 ].map((f, i) => (
                   <div key={i} className="flex items-start gap-3 text-left">
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -454,16 +459,7 @@ function ShareYourWeek() {
           </div>
 
           <FadeIn delay={0.2} className="shrink-0">
-            <div className="relative">
-              <WeeklyShareCard animated compact={false} />
-              <motion.div
-                className="absolute -bottom-3 -right-3 bg-accent text-white rounded-full p-3 shadow-xl shadow-accent/30"
-                animate={{ y: [0, -4, 0] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <Share2 className="w-5 h-5" />
-              </motion.div>
-            </div>
+            <WeeklyShareCard animated compact={false} />
           </FadeIn>
         </div>
       </div>
@@ -598,6 +594,11 @@ function InviteCTA() {
           >
             Tengo una invitación <ArrowRight className="w-5 h-5" />
           </a>
+          <p className="mt-4">
+            <a href="/access?waitlist=1" className="text-xs text-gray-400 hover:text-muted transition">
+              ¿No tienes? Entra en la lista de espera
+            </a>
+          </p>
         </FadeIn>
       </div>
     </section>
@@ -653,7 +654,7 @@ export default function Home() {
       <Hero />
       <ActivityTicker />
       <HowItWorks />
-      <ShareYourWeek />
+      <WeeklyRecap />
       <Squads />
       <InviteCTA />
       <Footer />
