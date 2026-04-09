@@ -38,7 +38,8 @@ export default function Dashboard() {
   const [heatmapData, setHeatmapData] = useState<number[]>(Array.from({ length: 84 }, () => 0))
   const [justCompleted, setJustCompleted] = useState<string | null>(null)
 
-  const today = new Date().toISOString().split('T')[0]
+  const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const today = localDate(new Date())
 
   const fetchData = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -103,27 +104,21 @@ export default function Dashboard() {
       setWeeklyPts(pts)
     }
 
-    // Heatmap (12 weeks)
+    // Heatmap (12 weeks = 84 days, including today)
     const heatStart = new Date()
-    heatStart.setDate(heatStart.getDate() - 84)
+    heatStart.setDate(heatStart.getDate() - 83)
     const { data: heatLogs } = await supabase
       .from('habit_logs')
       .select('log_date, pts_earned')
       .eq('user_id', user.id)
-      .gte('log_date', heatStart.toISOString().split('T')[0])
+      .gte('log_date', localDate(heatStart))
       .eq('completed', true)
 
-    const { data: activeHabits } = await supabase
-      .from('habits')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('active', true)
-
-    const maxDaily = (activeHabits?.length || 1) * 50
+    const maxDaily = habitsRes.data?.reduce((s, h) => s + h.pts, 0) || 50
     const heatArr: number[] = Array.from({ length: 84 }, (_, i) => {
       const d = new Date(heatStart)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
+      const dateStr = localDate(d)
       const dayPts = heatLogs?.filter(l => l.log_date === dateStr).reduce((s, l) => s + l.pts_earned, 0) || 0
       return dayPts === 0 ? 0 : Math.min(100, Math.round((dayPts / maxDaily) * 100))
     })
@@ -141,12 +136,10 @@ export default function Dashboard() {
       next[todayIdx] = Math.max(0, next[todayIdx] + (added ? pts : -pts))
       return next
     })
-    const todayOffset = Math.floor((Date.now() - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00').getTime() + 84 * 86400000) / 86400000)
-    const heatIdx = Math.min(83, Math.max(0, 83 - (84 - todayOffset)))
     setHeatmapData(prev => {
       if (prev.length === 0) return prev
       const next = [...prev]
-      const maxDaily = Math.max(habits.length, 1) * 50
+      const maxDaily = habits.reduce((s, h) => s + h.pts, 0) || 50
       const currentPts = (next[83] / 100) * maxDaily
       const newPts = Math.max(0, currentPts + (added ? pts : -pts))
       next[83] = newPts === 0 ? 0 : Math.min(100, Math.round((newPts / maxDaily) * 100))

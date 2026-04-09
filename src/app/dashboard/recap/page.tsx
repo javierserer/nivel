@@ -104,22 +104,22 @@ export default function RecapPage() {
       dailyPts,
     })
 
-    // Heatmap data (16 weeks)
+    // Heatmap data (16 weeks = 112 days, including today)
+    const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const heatStart = new Date()
-    heatStart.setDate(heatStart.getDate() - 112)
+    heatStart.setDate(heatStart.getDate() - 111)
     const { data: heatLogs } = await supabase
       .from('habit_logs')
       .select('log_date, pts_earned')
       .eq('user_id', user.id)
-      .gte('log_date', heatStart.toISOString().split('T')[0])
+      .gte('log_date', localDate(heatStart))
       .eq('completed', true)
 
     const hm: number[] = []
     for (let i = 0; i < 112; i++) {
       const d = new Date(heatStart)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
-      hm.push(heatLogs?.filter(l => l.log_date === dateStr).reduce((s, l) => s + l.pts_earned, 0) || 0)
+      hm.push(heatLogs?.filter(l => l.log_date === localDate(d)).reduce((s, l) => s + l.pts_earned, 0) || 0)
     }
     setHeatmapData(hm)
 

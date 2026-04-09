@@ -76,22 +76,22 @@ export default function ProfilePage() {
       used: i.used_by !== null,
     })) || [])
 
-    // Build heatmap data (last 14 weeks)
+    // Build heatmap data (last 14 weeks = 98 days, including today)
+    const localDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 98)
+    startDate.setDate(startDate.getDate() - 97)
     const { data: heatLogs } = await supabase
       .from('habit_logs')
       .select('log_date, pts_earned')
       .eq('user_id', user.id)
       .eq('completed', true)
-      .gte('log_date', startDate.toISOString().split('T')[0])
+      .gte('log_date', localDate(startDate))
 
     const heatmap: number[] = []
     for (let i = 0; i < 98; i++) {
       const d = new Date(startDate)
       d.setDate(d.getDate() + i)
-      const dateStr = d.toISOString().split('T')[0]
-      const dayPts = heatLogs?.filter(l => l.log_date === dateStr).reduce((s, l) => s + l.pts_earned, 0) || 0
+      const dayPts = heatLogs?.filter(l => l.log_date === localDate(d)).reduce((s, l) => s + l.pts_earned, 0) || 0
       heatmap.push(dayPts)
     }
     setHeatmapData(heatmap)
