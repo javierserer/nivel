@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, X, Flame, TrendingUp, Loader2 } from 'lucide-react'
-import { MiniHeatmap } from '@/components/charts'
+import { Plus, X, TrendingUp, Loader2, Pencil, ChevronDown, Search, Zap, Dumbbell, Brain, BookOpen, Moon, Flame, Users, Sparkles, Heart, TreePine, Wallet } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { searchHabits, CATEGORIES, HABIT_CATALOG, type CatalogHabit } from '@/lib/habit-catalog'
 
 interface Habit {
   id: string
@@ -19,20 +19,24 @@ interface Habit {
 }
 
 const DIFFICULTIES = [
-  { id: 'easy', label: 'Fácil', pts: 15, desc: 'Beber agua, estirar, vitaminas...' },
-  { id: 'normal', label: 'Normal', pts: 30, desc: 'Leer, meditar, cocinar...' },
-  { id: 'hard', label: 'Difícil', pts: 50, desc: 'Gym, correr, madrugar...' },
-  { id: 'beast', label: 'Bestia', pts: 80, desc: 'Ayuno, cold shower, doble sesión...' },
+  { id: 'easy', label: 'Fácil', pts: 15 },
+  { id: 'normal', label: 'Normal', pts: 30 },
+  { id: 'hard', label: 'Difícil', pts: 50 },
+  { id: 'beast', label: 'Bestia', pts: 80 },
 ]
 
-const POPULAR = [
-  { name: 'Cold shower', diff: 'Bestia', pts: 80 },
-  { name: 'Journaling', diff: 'Normal', pts: 30 },
-  { name: 'No pantallas antes de dormir', diff: 'Normal', pts: 30 },
-  { name: 'Caminar 10k pasos', diff: 'Difícil', pts: 50 },
-  { name: 'Ayuno 16h', diff: 'Bestia', pts: 80 },
-  { name: 'Estiramientos', diff: 'Fácil', pts: 15 },
-]
+const DIFF_COLORS: Record<string, string> = {
+  easy: 'bg-green-100 text-green-700',
+  normal: 'bg-blue-100 text-blue-700',
+  hard: 'bg-orange-100 text-orange-700',
+  beast: 'bg-red-100 text-red-700',
+}
+
+const CAT_ICONS: Record<string, typeof Dumbbell> = {
+  Fitness: Dumbbell, Nutrición: Zap, Mental: Brain, Productividad: Flame,
+  Aprendizaje: BookOpen, Sueño: Moon, Retos: Sparkles, Social: Users,
+  Cuidado: Heart, Finanzas: Wallet, Creatividad: Sparkles, Exterior: TreePine,
+}
 
 export default function HabitsPage() {
   const supabase = createClient()
@@ -43,6 +47,10 @@ export default function HabitsPage() {
   const [newDifficulty, setNewDifficulty] = useState('')
   const [newFrequency, setNewFrequency] = useState('Diario')
   const [saving, setSaving] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<CatalogHabit[]>([])
+  const [browseCategory, setBrowseCategory] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const fetchHabits = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -65,22 +73,38 @@ export default function HabitsPage() {
         .gte('log_date', thirtyDaysAgo.toISOString().split('T')[0])
 
       const enriched = data.map(h => {
-        const habitLogs = logs?.filter(l => l.habit_id === h.id) || []
-        const completed = habitLogs.filter(l => l.completed).length
-        const total = Math.max(habitLogs.length, 1)
+        const habitLogs = logs?.filter(l => l.habit_id === h.id && l.completed) || []
         return {
           ...h,
-          completion_rate: Math.round((completed / total) * 100),
+          completion_rate: Math.round((habitLogs.length / 30) * 100),
           streak: 0,
         }
       })
-
       setHabits(enriched)
     }
     setLoading(false)
   }, [supabase])
 
   useEffect(() => { fetchHabits() }, [fetchHabits])
+
+  const handleNameChange = (val: string) => {
+    setNewName(val)
+    setSuggestions(searchHabits(val))
+  }
+
+  const pickSuggestion = (s: CatalogHabit) => {
+    setNewName(s.name)
+    setNewDifficulty(s.difficulty)
+    setSuggestions([])
+  }
+
+  const pickFromCatalog = (s: CatalogHabit) => {
+    setNewName(s.name)
+    setNewDifficulty(s.difficulty)
+    setBrowseCategory(null)
+    setShowAdd(true)
+    setSuggestions([])
+  }
 
   const toggleActive = async (id: string, currentActive: boolean) => {
     setHabits(prev => prev.map(h => h.id === id ? { ...h, active: !h.active } : h))
@@ -117,6 +141,16 @@ export default function HabitsPage() {
     setNewFrequency('Diario')
     setShowAdd(false)
     setSaving(false)
+    setSuggestions([])
+  }
+
+  const updateHabit = async (id: string, updates: Partial<Habit>) => {
+    const diff = updates.difficulty ? DIFFICULTIES.find(d => d.id === updates.difficulty) : null
+    const fullUpdates = diff ? { ...updates, pts: diff.pts } : updates
+
+    setHabits(prev => prev.map(h => h.id === id ? { ...h, ...fullUpdates } : h))
+    await supabase.from('habits').update(fullUpdates).eq('id', id)
+    setEditId(null)
   }
 
   const activeHabits = habits.filter(h => h.active)
@@ -132,11 +166,11 @@ export default function HabitsPage() {
   }
 
   return (
-    <div className="pt-14 px-5">
+    <div className="pt-14 px-5 pb-28">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold">Hábitos</h1>
         <motion.button
-          onClick={() => setShowAdd(!showAdd)}
+          onClick={() => { setShowAdd(!showAdd); setBrowseCategory(null) }}
           className={`w-9 h-9 rounded-xl flex items-center justify-center transition shadow-sm ${
             showAdd ? 'bg-gray-100 text-gray-600' : 'bg-white border border-border text-muted'
           }`}
@@ -154,14 +188,49 @@ export default function HabitsPage() {
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden mb-5">
             <div className="bg-white border border-border rounded-2xl p-5 shadow-sm">
               <p className="text-sm font-semibold mb-4">Nuevo hábito</p>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="Nombre (ej: No-fap, Yoga, Journaling...)"
-                className="w-full px-4 py-3 bg-surface border border-border rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-accent/40 transition mb-3"
-                autoFocus
-              />
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newName}
+                  onChange={(e) => handleNameChange(e.target.value)}
+                  placeholder="Busca o escribe un hábito..."
+                  className="w-full pl-10 pr-4 py-3 bg-surface border border-border rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-accent/40 transition"
+                  autoFocus
+                />
+                <AnimatePresence>
+                  {suggestions.length > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      className="absolute z-20 left-0 right-0 top-full mt-1 bg-white border border-border rounded-xl shadow-lg overflow-hidden"
+                    >
+                      {suggestions.map((s, i) => {
+                        const Icon = CAT_ICONS[s.category] || Sparkles
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => pickSuggestion(s)}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface transition text-left"
+                          >
+                            <Icon className="w-4 h-4 text-gray-400 shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{s.name}</p>
+                              <p className="text-[10px] text-muted">{s.category}</p>
+                            </div>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${DIFF_COLORS[s.difficulty]}`}>
+                              +{s.pts}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+
               <p className="text-xs text-muted mb-2">Frecuencia</p>
               <div className="flex gap-2 mb-4 flex-wrap">
                 {['Diario', '3x semana', '2x semana', '1x semana'].map(f => (
@@ -176,24 +245,23 @@ export default function HabitsPage() {
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-muted mb-2">Dificultad (determina los puntos)</p>
-              <div className="grid grid-cols-2 gap-2 mb-4">
+
+              <p className="text-xs text-muted mb-2">Dificultad</p>
+              <div className="flex gap-2 mb-4">
                 {DIFFICULTIES.map(d => (
                   <button
                     key={d.id}
                     onClick={() => setNewDifficulty(d.id)}
-                    className={`px-3 py-3 rounded-xl text-left transition border ${
+                    className={`flex-1 py-2.5 rounded-xl text-center transition border ${
                       newDifficulty === d.id ? 'bg-accent/5 border-accent/30' : 'border-border hover:border-gray-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className="text-xs font-semibold">{d.label}</span>
-                      <span className="text-xs font-bold text-accent">+{d.pts}</span>
-                    </div>
-                    <p className="text-[10px] text-muted leading-relaxed">{d.desc}</p>
+                    <span className="text-xs font-semibold block">{d.label}</span>
+                    <span className="text-[10px] text-accent font-bold">+{d.pts}</span>
                   </button>
                 ))}
               </div>
+
               <motion.button
                 onClick={addHabit}
                 disabled={!newName.trim() || !newDifficulty || saving}
@@ -214,35 +282,89 @@ export default function HabitsPage() {
         )}
         <div className="space-y-2">
           {activeHabits.map(h => (
-            <motion.div key={h.id} className="bg-white border border-border rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm" layout>
-              <MiniHeatmap completionRate={h.completion_rate || 0} />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-0.5">
-                  <p className="text-sm font-semibold truncate">{h.name}</p>
-                  {(h.streak ?? 0) > 0 && (
-                    <span className="text-[10px] text-accent font-bold flex items-center gap-0.5 shrink-0">
-                      <Flame className="w-2.5 h-2.5" /> {h.streak}d
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-[10px] text-muted">
-                  <span>{h.frequency}</span>
-                  <span>·</span>
-                  <span className="text-accent font-semibold">+{h.pts}</span>
-                  <span>·</span>
-                  <span>{h.completion_rate || 0}%</span>
-                </div>
-                <div className="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
-                  <div className="h-full bg-accent/40 rounded-full transition-all" style={{ width: `${h.completion_rate || 0}%` }} />
-                </div>
-              </div>
-              <button
-                onClick={() => toggleActive(h.id, h.active)}
-                className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted hover:text-red-400 hover:border-red-300 transition shrink-0"
+            <div key={h.id}>
+              <motion.div
+                className="bg-white border border-border rounded-xl px-4 py-3.5 shadow-sm"
+                layout
               >
-                <X className="w-3 h-3" />
-              </button>
-            </motion.div>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate">{h.name}</p>
+                    <div className="flex items-center gap-2 text-[10px] text-muted mt-0.5">
+                      <span className={`font-semibold px-1.5 py-0.5 rounded ${DIFF_COLORS[h.difficulty] || 'bg-gray-100 text-gray-600'}`}>
+                        {DIFFICULTIES.find(d => d.id === h.difficulty)?.label || h.difficulty}
+                      </span>
+                      <span>{h.frequency}</span>
+                      <span className="text-accent font-semibold">+{h.pts}</span>
+                      <span>{Math.min(h.completion_rate || 0, 100)}%</span>
+                    </div>
+                    <div className="h-1 bg-gray-100 rounded-full mt-2 overflow-hidden">
+                      <div className="h-full bg-accent/40 rounded-full transition-all" style={{ width: `${Math.min(h.completion_rate || 0, 100)}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => setEditId(editId === h.id ? null : h.id)}
+                      className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted hover:text-accent hover:border-accent/30 transition"
+                    >
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => toggleActive(h.id, h.active)}
+                      className="w-7 h-7 rounded-lg border border-border flex items-center justify-center text-muted hover:text-red-400 hover:border-red-300 transition"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+
+              <AnimatePresence>
+                {editId === h.id && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-surface border border-t-0 border-border rounded-b-xl px-4 py-4 -mt-1 space-y-3">
+                      <div>
+                        <p className="text-[10px] text-muted mb-1.5 font-medium">Dificultad</p>
+                        <div className="flex gap-2">
+                          {DIFFICULTIES.map(d => (
+                            <button
+                              key={d.id}
+                              onClick={() => updateHabit(h.id, { difficulty: d.id, pts: d.pts })}
+                              className={`flex-1 py-2 rounded-lg text-center transition border text-[11px] font-medium ${
+                                h.difficulty === d.id ? 'bg-accent/10 border-accent/30 text-accent' : 'border-border text-muted'
+                              }`}
+                            >
+                              {d.label} · +{d.pts}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-muted mb-1.5 font-medium">Frecuencia</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {['Diario', '3x semana', '2x semana', '1x semana'].map(f => (
+                            <button
+                              key={f}
+                              onClick={() => updateHabit(h.id, { frequency: f })}
+                              className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition border ${
+                                h.frequency === f ? 'bg-accent/10 border-accent/20 text-accent' : 'border-border text-muted'
+                              }`}
+                            >
+                              {f}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ))}
         </div>
       </div>
@@ -273,25 +395,64 @@ export default function HabitsPage() {
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-3">
           <TrendingUp className="w-3.5 h-3.5 text-accent" />
-          <p className="text-[10px] font-semibold text-muted uppercase tracking-widest">Populares en NIVEL</p>
+          <p className="text-[10px] font-semibold text-muted uppercase tracking-widest">Explorar hábitos</p>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
-          {POPULAR.map((p, i) => (
-            <motion.button
-              key={i}
-              className="shrink-0 w-[140px] bg-white border border-border rounded-xl p-3 text-left shadow-sm hover:border-accent/20 transition"
-              whileTap={{ scale: 0.97 }}
-              onClick={() => { setNewName(p.name); setShowAdd(true) }}
+
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide mb-3">
+          {CATEGORIES.map(cat => {
+            const Icon = CAT_ICONS[cat] || Sparkles
+            return (
+              <button
+                key={cat}
+                onClick={() => setBrowseCategory(browseCategory === cat ? null : cat)}
+                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border transition ${
+                  browseCategory === cat ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-white border-border text-muted'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {cat}
+              </button>
+            )
+          })}
+        </div>
+
+        <AnimatePresence>
+          {browseCategory && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
             >
-              <p className="text-xs font-semibold truncate mb-1">{p.name}</p>
-              <div className="flex items-center gap-1.5 text-[10px] text-muted">
-                <span className="text-accent font-bold">+{p.pts}</span>
-                <span>·</span>
-                <span>{p.diff}</span>
+              <div className="space-y-1.5">
+                {HABIT_CATALOG.filter(h => h.category === browseCategory).map((h, i) => {
+                  const already = habits.some(ex => ex.name.toLowerCase() === h.name.toLowerCase())
+                  return (
+                    <motion.button
+                      key={i}
+                      onClick={() => !already && pickFromCatalog(h)}
+                      disabled={already}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl border text-left transition ${
+                        already ? 'opacity-40 border-border bg-gray-50' : 'bg-white border-border hover:border-accent/20 shadow-sm'
+                      }`}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: already ? 0.4 : 1, y: 0 }}
+                      transition={{ delay: i * 0.02 }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{h.name}</p>
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${DIFF_COLORS[h.difficulty]}`}>
+                        +{h.pts}
+                      </span>
+                      {already && <span className="text-[10px] text-muted">Ya añadido</span>}
+                    </motion.button>
+                  )
+                })}
               </div>
-            </motion.button>
-          ))}
-        </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

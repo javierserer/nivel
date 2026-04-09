@@ -215,7 +215,7 @@ export default function RecapPage() {
             <p className="text-[10px] text-muted">Puntos</p>
           </div>
           <div className="text-center">
-            <p className="text-2xl font-extrabold text-accent">🔥{thisWeek.streak}</p>
+            <p className="text-2xl font-extrabold text-accent flex items-center gap-1"><Flame className="w-6 h-6" />{thisWeek.streak}</p>
             <p className="text-[10px] text-muted">Racha</p>
           </div>
         </div>
@@ -245,7 +245,7 @@ export default function RecapPage() {
             <span className="text-[10px] text-accent font-bold">{thisWeek.streak}d racha</span>
           </div>
         </div>
-        <StreakHeatmap weeks={16} size="sm" data={heatmapData} />
+        <StreakHeatmap weeks={16} size="sm" data={heatmapData} fullWidth />
         <div className="mt-4 pt-3 border-t border-border">
           <p className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-3">Puntos por día</p>
           <WeeklyBars data={thisWeek.dailyPts} maxHeight={70} />

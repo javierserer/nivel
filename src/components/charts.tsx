@@ -1,11 +1,12 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useRef, useState, useEffect } from 'react'
 
 const SPRING = { type: 'spring' as const, stiffness: 80, damping: 18 }
 
 /* ================================================================
-   STREAK HEATMAP — GitHub-style contribution calendar
+   STREAK HEATMAP — Full-width, auto-calculates weeks to fill
    ================================================================ */
 
 interface HeatmapProps {
@@ -13,19 +14,34 @@ interface HeatmapProps {
   data?: number[]
   size?: 'sm' | 'md'
   animated?: boolean
+  fullWidth?: boolean
 }
 
-export function StreakHeatmap({ weeks = 12, data, size = 'md', animated = true }: HeatmapProps) {
+export function StreakHeatmap({ weeks: fixedWeeks, data, size = 'md', animated = true, fullWidth = false }: HeatmapProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [autoWeeks, setAutoWeeks] = useState(fixedWeeks ?? 12)
+
   const cellSize = size === 'sm' ? 8 : 11
   const gap = size === 'sm' ? 2 : 3
-  const days = weeks * 7
+  const labelWidth = size === 'md' ? 16 : 0
 
-  const cells = data ?? generateHeatmapData(days)
+  useEffect(() => {
+    if (!fullWidth || fixedWeeks) return
+    const el = containerRef.current
+    if (!el) return
+    const available = el.clientWidth - labelWidth
+    const colWidth = cellSize + gap - 1
+    setAutoWeeks(Math.max(4, Math.floor(available / colWidth)))
+  }, [fullWidth, fixedWeeks, cellSize, gap, labelWidth])
+
+  const weeks = fixedWeeks ?? autoWeeks
+  const days = weeks * 7
+  const cells = data ?? Array.from({ length: days }, () => 0)
 
   const dayLabels = size === 'md' ? ['L', '', 'X', '', 'V', '', 'D'] : []
 
   return (
-    <div className="flex gap-1">
+    <div ref={containerRef} className={`flex gap-1 ${fullWidth ? 'w-full' : ''}`}>
       {size === 'md' && (
         <div className="flex flex-col justify-between pr-1" style={{ gap }}>
           {dayLabels.map((d, i) => (
@@ -35,7 +51,7 @@ export function StreakHeatmap({ weeks = 12, data, size = 'md', animated = true }
           ))}
         </div>
       )}
-      <div className="flex" style={{ gap: gap - 1 }}>
+      <div className={`flex ${fullWidth ? 'flex-1 justify-between' : ''}`} style={fullWidth ? {} : { gap: gap - 1 }}>
         {Array.from({ length: weeks }).map((_, weekIdx) => (
           <div key={weekIdx} className="flex flex-col" style={{ gap: gap - 1 }}>
             {Array.from({ length: 7 }).map((_, dayIdx) => {
@@ -55,7 +71,7 @@ export function StreakHeatmap({ weeks = 12, data, size = 'md', animated = true }
               const animProps = animated ? {
                 initial: { opacity: 0, scale: 0 },
                 animate: { opacity: 1, scale: 1 },
-                transition: { delay: 0.3 + idx * 0.004, duration: 0.2 },
+                transition: { delay: 0.3 + idx * 0.003, duration: 0.15 },
               } : {}
 
               return (
@@ -87,7 +103,7 @@ interface WeeklyBarsProps {
 }
 
 export function WeeklyBars({
-  data = [65, 80, 45, 90, 100, 30, 0],
+  data = [0, 0, 0, 0, 0, 0, 0],
   labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D'],
   maxHeight = 80,
   accentToday = true,
@@ -132,38 +148,6 @@ export function WeeklyBars({
 }
 
 /* ================================================================
-   MINI HEATMAP — Compact 4-week heatmap for individual habits
-   ================================================================ */
-
-interface MiniHeatmapProps {
-  data?: number[]
-  completionRate: number
-}
-
-export function MiniHeatmap({ data, completionRate }: MiniHeatmapProps) {
-  const cells = data ?? generateMiniHeatmapData(28, completionRate)
-
-  return (
-    <div className="flex gap-[2px]">
-      {Array.from({ length: 4 }).map((_, weekIdx) => (
-        <div key={weekIdx} className="flex flex-col gap-[2px]">
-          {Array.from({ length: 7 }).map((_, dayIdx) => {
-            const idx = weekIdx * 7 + dayIdx
-            const done = cells[idx] ?? 0
-            return (
-              <div
-                key={dayIdx}
-                className={`w-[5px] h-[5px] rounded-[1px] ${done ? 'bg-accent' : 'bg-gray-200'}`}
-              />
-            )
-          })}
-        </div>
-      ))}
-    </div>
-  )
-}
-
-/* ================================================================
    SQUAD COMPARISON BARS
    ================================================================ */
 
@@ -192,25 +176,4 @@ export function ComparisonBars({ members }: ComparisonBarsProps) {
       ))}
     </div>
   )
-}
-
-/* ================================================================
-   HELPERS
-   ================================================================ */
-
-function generateHeatmapData(days: number): number[] {
-  const seed = [0,80,100,60,0,90,70,100,50,0,80,100,100,60,0,0,30,90,100,80,70,100,50,0,80,100,90,60]
-  return Array.from({ length: days }, (_, i) => {
-    const base = seed[i % seed.length]
-    if (i > days - 7 && i > days - 3) return 0
-    return base
-  })
-}
-
-function generateMiniHeatmapData(days: number, rate: number): number[] {
-  return Array.from({ length: days }, (_, i) => {
-    const threshold = rate / 100
-    const pseudo = Math.sin(i * 13.37 + rate) * 0.5 + 0.5
-    return pseudo < threshold ? 1 : 0
-  })
 }

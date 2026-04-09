@@ -273,7 +273,7 @@ export default function ProfilePage() {
           <p className="text-[10px] font-semibold text-muted uppercase tracking-widest">Actividad</p>
           <span className="text-[10px] text-accent font-bold">{heatmapData.filter(v => v > 0).length} días</span>
         </div>
-        <StreakHeatmap weeks={14} size="sm" animated={false} data={heatmapData} />
+        <StreakHeatmap weeks={14} size="sm" animated={false} data={heatmapData} fullWidth />
       </div>
 
       <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-3">Estadísticas</h2>

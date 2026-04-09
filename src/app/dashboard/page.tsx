@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Logo } from '@/components/shared'
-import { Heart, Flame, Check, ChevronRight, TrendingUp, Loader2 } from 'lucide-react'
+import { Heart, Check, ChevronRight, TrendingUp, Loader2, Flame, BarChart3, CalendarDays } from 'lucide-react'
+import { StreakHeatmap, WeeklyBars } from '@/components/charts'
 import { createClient } from '@/lib/supabase/client'
+import { playCompletionSound } from '@/lib/sounds'
 
 interface HabitWithLog {
   id: string
@@ -32,6 +34,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [earnedToast, setEarnedToast] = useState<string | null>(null)
   const [kudosGiven, setKudosGiven] = useState<Set<string>>(new Set())
+  const [weeklyPts, setWeeklyPts] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
+  const [heatmapData, setHeatmapData] = useState<number[]>([])
+  const [justCompleted, setJustCompleted] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -79,6 +84,51 @@ export default function Dashboard() {
       setFeed(feedWithKudos)
     }
 
+    // Weekly points
+    const weekStart = getWeekStart()
+    const { data: weekLogs } = await supabase
+      .from('habit_logs')
+      .select('log_date, pts_earned')
+      .eq('user_id', user.id)
+      .gte('log_date', weekStart)
+      .eq('completed', true)
+
+    if (weekLogs) {
+      const pts = [0, 0, 0, 0, 0, 0, 0]
+      weekLogs.forEach(l => {
+        const d = new Date(l.log_date + 'T00:00:00')
+        const dayIdx = d.getDay() === 0 ? 6 : d.getDay() - 1
+        pts[dayIdx] += l.pts_earned
+      })
+      setWeeklyPts(pts)
+    }
+
+    // Heatmap (12 weeks)
+    const heatStart = new Date()
+    heatStart.setDate(heatStart.getDate() - 84)
+    const { data: heatLogs } = await supabase
+      .from('habit_logs')
+      .select('log_date, pts_earned')
+      .eq('user_id', user.id)
+      .gte('log_date', heatStart.toISOString().split('T')[0])
+      .eq('completed', true)
+
+    const { data: activeHabits } = await supabase
+      .from('habits')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('active', true)
+
+    const maxDaily = (activeHabits?.length || 1) * 50
+    const heatArr: number[] = Array.from({ length: 84 }, (_, i) => {
+      const d = new Date(heatStart)
+      d.setDate(d.getDate() + i)
+      const dateStr = d.toISOString().split('T')[0]
+      const dayPts = heatLogs?.filter(l => l.log_date === dateStr).reduce((s, l) => s + l.pts_earned, 0) || 0
+      return dayPts === 0 ? 0 : Math.min(100, Math.round((dayPts / maxDaily) * 100))
+    })
+    setHeatmapData(heatArr)
+
     setLoading(false)
   }, [supabase, today])
 
@@ -92,6 +142,10 @@ export default function Dashboard() {
     setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, done: newDone } : h))
 
     if (newDone) {
+      playCompletionSound()
+      setJustCompleted(habit.id)
+      setTimeout(() => setJustCompleted(null), 600)
+
       setEarnedToast(`+${habit.pts}`)
       setTimeout(() => setEarnedToast(null), 1200)
 
@@ -143,11 +197,9 @@ export default function Dashboard() {
   const remaining = habits.length - completedCount
   const greeting = new Date().getHours() < 12 ? 'Buenos días' : new Date().getHours() < 20 ? 'Buenas tardes' : 'Buenas noches'
 
-  const motivMsg = remaining === 0
+  const motivMsg = remaining === 0 && habits.length > 0
     ? '¡Día perfecto! Todos completados'
-    : remaining <= 2
-      ? `Te quedan ${remaining} para el día perfecto`
-      : `Te quedan ${remaining} para el día perfecto`
+    : `Te quedan ${remaining} para el día perfecto`
 
   if (loading) {
     return (
@@ -158,7 +210,8 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="pt-14 px-5">
+    <div className="pt-14 px-5 pb-28">
+      {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
           <p className="text-xs text-muted mb-0.5">{greeting}</p>
@@ -173,6 +226,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* XP Bar */}
       <motion.div
         className="bg-white rounded-xl px-4 py-3 border border-border shadow-sm mb-3 relative overflow-hidden"
         initial={{ opacity: 0, y: 20 }}
@@ -227,6 +281,7 @@ export default function Dashboard() {
         </motion.p>
       )}
 
+      {/* Today's habits */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Hoy</h2>
@@ -246,29 +301,70 @@ export default function Dashboard() {
               className={`w-full flex items-center justify-between rounded-xl px-4 py-3.5 text-left transition border shadow-sm ${
                 h.done ? 'bg-success-bg border-success/20' : 'bg-white border-border hover:border-accent/20'
               }`}
-              whileTap={{ scale: 0.98 }}
+              whileTap={{ scale: 0.96 }}
               layout
             >
               <div className="flex items-center gap-3">
                 <motion.div
-                  className={`w-5 h-5 rounded-md flex items-center justify-center ${
-                    h.done ? 'bg-success text-white' : 'border border-gray-300'
+                  className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                    h.done ? 'bg-success text-white' : 'border-2 border-gray-300'
                   }`}
-                  animate={h.done ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.3 }}
+                  animate={justCompleted === h.id ? { scale: [1, 1.4, 1], rotate: [0, 10, -10, 0] } : h.done ? { scale: 1 } : { scale: 1 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
                 >
-                  {h.done && <Check className="w-3 h-3" />}
+                  {h.done && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
                 </motion.div>
                 <span className={`text-sm font-medium ${h.done ? 'text-muted line-through' : ''}`}>
                   {h.name}
                 </span>
               </div>
-              <span className={`text-xs font-bold ${h.done ? 'text-success' : 'text-muted'}`}>+{h.pts}</span>
+              <AnimatePresence mode="wait">
+                {justCompleted === h.id ? (
+                  <motion.span
+                    key="earned"
+                    className="text-sm font-bold text-accent"
+                    initial={{ opacity: 0, scale: 0.5, y: 4 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    +{h.pts}
+                  </motion.span>
+                ) : (
+                  <span className={`text-xs font-bold ${h.done ? 'text-success' : 'text-muted'}`}>+{h.pts}</span>
+                )}
+              </AnimatePresence>
             </motion.button>
           ))}
         </div>
       </div>
 
+      {/* Weekly points chart */}
+      {weeklyPts.some(p => p > 0) && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <BarChart3 className="w-3.5 h-3.5 text-accent" />
+            <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Esta semana</h2>
+          </div>
+          <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
+            <WeeklyBars data={weeklyPts} maxHeight={60} />
+          </div>
+        </div>
+      )}
+
+      {/* Activity heatmap */}
+      {heatmapData.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarDays className="w-3.5 h-3.5 text-accent" />
+            <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Actividad</h2>
+          </div>
+          <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
+            <StreakHeatmap data={heatmapData} weeks={12} fullWidth animated />
+          </div>
+        </div>
+      )}
+
+      {/* Squad feed */}
       {feed.length > 0 && (
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
@@ -324,6 +420,14 @@ export default function Dashboard() {
       )}
     </div>
   )
+}
+
+function getWeekStart(): string {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = day === 0 ? 6 : day - 1
+  d.setDate(d.getDate() - diff)
+  return d.toISOString().split('T')[0]
 }
 
 function getTimeAgo(dateStr: string): string {
