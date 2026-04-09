@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef, type ReactNode } from 'react'
 import { motion, useInView } from 'framer-motion'
-import { FadeIn, CountUp, Logo, SPRING, SPRING_SNAPPY } from '@/components/shared'
+import { FadeIn, CountUp, Logo, SPRING } from '@/components/shared'
 import {
-  Flame, Heart, Target, Users, BarChart3, Trophy,
-  ChevronRight, Check, ArrowRight, Zap, TrendingUp, Swords,
+  Flame, Heart, Target, BarChart3, Trophy,
+  Check, ArrowRight, Zap, TrendingUp, Swords,
 } from 'lucide-react'
 
 /* ================================================================
@@ -63,18 +63,41 @@ function Navbar() {
 }
 
 /* ================================================================
+   MINI STREAK GRID (for hero phone mockup)
+   ================================================================ */
+
+function MiniStreakGrid({ inView }: { inView: boolean }) {
+  const pattern = [1,1,0,1,1,1,1, 1,0,1,1,1,1,1, 1,1,1,0,1,1,1, 1,1,1,1,1,0,0]
+  return (
+    <div className="flex gap-[2px]">
+      {Array.from({ length: 4 }).map((_, w) => (
+        <div key={w} className="flex flex-col gap-[2px]">
+          {Array.from({ length: 7 }).map((_, d) => {
+            const idx = w * 7 + d
+            const on = pattern[idx]
+            return (
+              <motion.div
+                key={d}
+                className={`w-[7px] h-[7px] rounded-[1px] ${on ? 'bg-accent' : 'bg-gray-200'}`}
+                initial={{ opacity: 0, scale: 0 }}
+                animate={inView ? { opacity: 1, scale: 1 } : {}}
+                transition={{ delay: 1.0 + idx * 0.008 }}
+              />
+            )
+          })}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/* ================================================================
    HERO
    ================================================================ */
 
 function Hero() {
   const ref = useRef<HTMLDivElement>(null)
   const inView = useInView(ref, { once: true })
-
-  const feedItems = [
-    { name: 'Carlos', action: 'Gym 1h', pts: 50, kudos: 8, time: '12min' },
-    { name: 'María', action: 'Leer 30min', pts: 30, kudos: 5, time: '45min' },
-    { name: 'Tú', action: 'Madrugar 6:30', pts: 50, kudos: 12, time: '2h', isYou: true },
-  ]
 
   return (
     <section ref={ref} className="relative min-h-screen flex items-center overflow-hidden pt-20 pb-16">
@@ -156,7 +179,7 @@ function Hero() {
           </motion.div>
         </div>
 
-        {/* Phone mockup */}
+        {/* Phone mockup — dashboard with charts */}
         <motion.div
           className="relative shrink-0"
           initial={{ opacity: 0, scale: 0.9, y: 40 }}
@@ -165,7 +188,7 @@ function Hero() {
         >
           <PhoneFrame>
             <div className="pt-10 px-4 pb-4 h-full flex flex-col">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-extrabold tracking-tight text-gray-900">
                   <span className="text-accent">N</span>IVEL
                 </span>
@@ -174,55 +197,96 @@ function Hero() {
                 </div>
               </div>
 
-              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-2">Feed</p>
-              <div className="space-y-2.5 flex-1">
-                {feedItems.map((item, i) => (
-                  <motion.div
-                    key={i}
-                    className={`rounded-xl p-3 ${item.isYou ? 'bg-accent/[0.06] border border-accent/15' : 'bg-gray-50'}`}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={inView ? { opacity: 1, x: 0 } : {}}
-                    transition={{ ...SPRING, delay: 0.7 + i * 0.12 }}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5">
-                      <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-[8px] font-bold text-gray-500">
-                        {item.name[0]}
-                      </div>
-                      <span className="text-xs font-semibold text-gray-900">{item.name}</span>
-                      <span className="text-[10px] text-gray-400 ml-auto">{item.time}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
-                        <Check className="w-3 h-3 text-accent" />
-                        <span className="text-xs text-gray-700">{item.action}</span>
-                        <span className="text-[10px] text-accent font-bold">+{item.pts}</span>
-                      </div>
-                      <div className="flex items-center gap-1 text-gray-400">
-                        <Heart className="w-3 h-3" />
-                        <span className="text-[10px]">{item.kudos}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
+              {/* Level card */}
               <motion.div
-                className="mt-3 bg-gray-50 rounded-xl p-3 text-center"
+                className="bg-gray-50 rounded-xl p-3 mb-3"
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.6 }}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-2xl font-extrabold text-accent">12</span>
+                  <span className="text-[9px] text-gray-400">1.440 / 2.000 XP</span>
+                </div>
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <motion.div
+                    className="h-full bg-accent rounded-full"
+                    initial={{ width: 0 }}
+                    animate={inView ? { width: '72%' } : {}}
+                    transition={{ duration: 0.8, delay: 0.8 }}
+                  />
+                </div>
+              </motion.div>
+
+              {/* Mini heatmap */}
+              <motion.div
+                className="mb-3"
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ delay: 0.9 }}
+              >
+                <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Tu racha</p>
+                <MiniStreakGrid inView={inView} />
+              </motion.div>
+
+              {/* Mini bars */}
+              <motion.div
+                className="mb-3"
+                initial={{ opacity: 0 }}
+                animate={inView ? { opacity: 1 } : {}}
+                transition={{ delay: 1.1 }}
+              >
+                <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Esta semana</p>
+                <div className="flex items-end gap-1 h-10">
+                  {[65, 80, 45, 90, 95, 30, 0].map((v, i) => (
+                    <motion.div
+                      key={i}
+                      className={`flex-1 rounded-sm ${v === 0 ? 'bg-gray-100' : i === 4 ? 'bg-accent' : 'bg-accent/40'}`}
+                      initial={{ height: 2 }}
+                      animate={inView ? { height: Math.max((v / 100) * 40, 2) } : {}}
+                      transition={{ delay: 1.2 + i * 0.05, duration: 0.4 }}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-1 mt-0.5">
+                  {['L', 'M', 'X', 'J', 'V', 'S', 'D'].map((d, i) => (
+                    <span key={i} className={`flex-1 text-center text-[7px] ${i === 4 ? 'text-accent font-bold' : 'text-gray-400'}`}>{d}</span>
+                  ))}
+                </div>
+              </motion.div>
+
+              {/* Today habits */}
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={inView ? { opacity: 1 } : {}}
                 transition={{ delay: 1.3 }}
               >
-                <p className="text-[10px] text-gray-400">Tu nivel</p>
-                <p className="text-xl font-extrabold text-gray-900">12 <span className="text-xs text-gray-400 font-normal">nivel</span></p>
+                <p className="text-[8px] text-gray-400 font-semibold uppercase tracking-wider mb-1.5">Hoy</p>
+                <div className="space-y-1.5">
+                  {[
+                    { name: 'Gym 1h', done: true, pts: 50 },
+                    { name: 'Leer 30min', done: true, pts: 30 },
+                    { name: 'Meditar', done: false, pts: 15 },
+                  ].map((h, i) => (
+                    <div key={i} className={`flex items-center gap-2 rounded-lg px-2.5 py-1.5 ${h.done ? 'bg-green-50' : 'bg-gray-50'}`}>
+                      <div className={`w-3.5 h-3.5 rounded flex items-center justify-center ${h.done ? 'bg-green-500 text-white' : 'border border-gray-300'}`}>
+                        {h.done && <Check className="w-2 h-2" />}
+                      </div>
+                      <span className={`text-[10px] flex-1 ${h.done ? 'text-gray-400 line-through' : 'text-gray-700'}`}>{h.name}</span>
+                      <span className={`text-[9px] font-bold ${h.done ? 'text-green-500' : 'text-gray-400'}`}>+{h.pts}</span>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
             </div>
           </PhoneFrame>
 
+          {/* Floating badges */}
           <motion.div
             className="absolute -right-6 top-28 bg-white border border-border rounded-xl p-3 shadow-lg w-44"
             initial={{ opacity: 0, x: 20, scale: 0.85 }}
             animate={inView ? { opacity: 1, x: 0, scale: 1 } : {}}
-            transition={{ ...SPRING, delay: 1.4 }}
+            transition={{ ...SPRING, delay: 1.5 }}
           >
             <motion.div
               animate={inView ? { y: [0, -3, 0] } : {}}
@@ -237,10 +301,10 @@ function Hero() {
           </motion.div>
 
           <motion.div
-            className="absolute -left-4 bottom-28 bg-white border border-border rounded-xl p-3 shadow-lg"
+            className="absolute -left-4 bottom-32 bg-white border border-border rounded-xl p-3 shadow-lg"
             initial={{ opacity: 0, x: -20, scale: 0.85 }}
             animate={inView ? { opacity: 1, x: 0, scale: 1 } : {}}
-            transition={{ ...SPRING, delay: 1.6 }}
+            transition={{ ...SPRING, delay: 1.7 }}
           >
             <motion.div
               animate={inView ? { y: [0, -3, 0] } : {}}
@@ -342,16 +406,14 @@ function HowItWorks() {
 }
 
 /* ================================================================
-   FEED PREVIEW
+   PROGRESS PREVIEW (replaces old FeedPreview — shows charts)
    ================================================================ */
 
-function FeedPreview() {
-  const activities = [
-    { name: 'Carlos M.', initials: 'CM', action: 'Gym 1h', pts: 50, kudos: 12, time: 'Hace 12 min', streak: 21 },
-    { name: 'María L.', initials: 'ML', action: 'Meditación 15min', pts: 30, kudos: 8, time: 'Hace 45 min' },
-    { name: 'Javier S.', initials: 'JS', action: 'Leer 30min', pts: 30, kudos: 3, time: 'Hace 1h', isYou: true },
-    { name: 'David R.', initials: 'DR', action: 'Sin alcohol hoy', pts: 30, kudos: 5, time: 'Hace 2h' },
-  ]
+function ProgressPreview() {
+  const weekData = [65, 80, 45, 90, 95, 30, 15]
+  const trendData = [180, 320, 290, 450, 380, 420]
+  const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
+  const max = Math.max(...weekData)
 
   return (
     <section className="py-24 sm:py-32 bg-surface">
@@ -359,26 +421,27 @@ function FeedPreview() {
         <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
           <div className="flex-1 text-center lg:text-left">
             <FadeIn>
-              <p className="text-sm text-accent font-semibold uppercase tracking-widest mb-3">Activity feed</p>
+              <p className="text-sm text-accent font-semibold uppercase tracking-widest mb-3">Tu progreso</p>
               <h2 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-[1.05]">
-                Tu squad ve
+                Los números
                 <br />
-                cada paso.
+                <span className="text-muted">no mienten.</span>
               </h2>
             </FadeIn>
 
             <FadeIn delay={0.15}>
               <p className="mt-6 text-lg text-muted leading-relaxed max-w-md mx-auto lg:mx-0">
-                Cada hábito completado aparece en el feed. Tu equipo te celebra con kudos y te empuja cuando flojeas.
+                Gráficos semanales, heatmap de actividad, tendencias y personal bests.
+                <span className="text-foreground font-medium"> Tu training log personal.</span>
               </p>
             </FadeIn>
 
             <FadeIn delay={0.3}>
               <div className="mt-8 space-y-3 max-w-md mx-auto lg:mx-0">
                 {[
-                  { icon: Heart, text: 'Kudos con un tap', detail: 'Celebra cada logro de tu equipo' },
-                  { icon: Users, text: 'Feed en tiempo real', detail: 'Ve el progreso de todos al instante' },
-                  { icon: Flame, text: 'Rachas visibles', detail: 'Las rachas largas inspiran al grupo' },
+                  { icon: BarChart3, text: 'Puntos por día', detail: 'Ve tu actividad como barras de L a D' },
+                  { icon: TrendingUp, text: 'Tendencias semanales', detail: 'Tu curva de progreso semana a semana' },
+                  { icon: Flame, text: 'Streak heatmap', detail: 'Cuadrícula GitHub-style de tus días activos' },
                 ].map((f, i) => (
                   <div key={i} className="flex items-start gap-3 text-left">
                     <div className="w-8 h-8 rounded-lg bg-accent/10 flex items-center justify-center shrink-0 mt-0.5">
@@ -394,44 +457,101 @@ function FeedPreview() {
             </FadeIn>
           </div>
 
+          {/* Charts mockup */}
           <FadeIn delay={0.2} className="shrink-0">
-            <div className="w-[320px] bg-white rounded-2xl border border-border shadow-lg p-4 space-y-3">
-              {activities.map((a, i) => (
-                <div key={i} className={`rounded-xl p-3.5 ${a.isYou ? 'bg-accent/[0.05] border border-accent/10' : 'bg-surface'}`}>
-                  <div className="flex items-center gap-2.5 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-500">
-                      {a.initials}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-gray-900">{a.name}</span>
-                        {a.streak && (
-                          <span className="text-[10px] text-accent font-bold flex items-center gap-0.5">
-                            <Flame className="w-2.5 h-2.5" /> {a.streak}d
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-gray-400">{a.time}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <Check className="w-3.5 h-3.5 text-success" />
-                      <span className="text-sm text-gray-800 font-medium">{a.action}</span>
-                      <span className="text-xs text-accent font-bold">+{a.pts}</span>
-                    </div>
-                    <button className="flex items-center gap-1 text-gray-400 hover:text-accent transition">
-                      <Heart className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-medium">{a.kudos}</span>
-                    </button>
-                  </div>
+            <div className="w-[320px] space-y-3">
+              {/* Weekly bars card */}
+              <div className="bg-white rounded-2xl border border-border shadow-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Esta semana</p>
+                  <span className="text-[10px] text-accent font-bold">+420 pts</span>
                 </div>
-              ))}
+                <div className="flex items-end justify-between gap-2 h-20">
+                  {weekData.map((v, i) => (
+                    <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                      <span className="text-[8px] font-bold text-gray-400 tabular-nums">{v > 0 ? v : ''}</span>
+                      <FadeIn delay={0.4 + i * 0.06}>
+                        <div
+                          className={`w-full rounded-md ${v === 0 ? 'bg-gray-100' : i === 4 ? 'bg-accent' : 'bg-accent/40'}`}
+                          style={{ height: Math.max((v / max) * 56, 3), minWidth: 24 }}
+                        />
+                      </FadeIn>
+                      <span className={`text-[8px] font-semibold ${i === 4 ? 'text-accent' : 'text-gray-400'}`}>{labels[i]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trend line card */}
+              <div className="bg-white rounded-2xl border border-border shadow-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Tendencia</p>
+                  <span className="text-[10px] text-accent font-bold">+133%</span>
+                </div>
+                <StaticTrendLine data={trendData} />
+              </div>
+
+              {/* Heatmap card */}
+              <div className="bg-white rounded-2xl border border-border shadow-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-widest">Actividad</p>
+                  <span className="text-[10px] text-accent font-bold flex items-center gap-0.5">
+                    <Flame className="w-2.5 h-2.5" /> 14d racha
+                  </span>
+                </div>
+                <HomepageHeatmap />
+              </div>
             </div>
           </FadeIn>
         </div>
       </div>
     </section>
+  )
+}
+
+function StaticTrendLine({ data }: { data: number[] }) {
+  const w = 280; const h = 70
+  const pad = 8
+  const cw = w - pad * 2; const ch = h - pad * 2
+  const max = Math.max(...data); const min = Math.min(...data); const range = max - min || 1
+  const pts = data.map((v, i) => ({
+    x: pad + (i / (data.length - 1)) * cw,
+    y: pad + ch - ((v - min) / range) * ch,
+  }))
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const area = `${d} L ${pts[pts.length - 1].x} ${h - pad} L ${pts[0].x} ${h - pad} Z`
+
+  return (
+    <svg width={w} height={h}>
+      <defs>
+        <linearGradient id="homeFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#FC5200" stopOpacity="0.12" />
+          <stop offset="100%" stopColor="#FC5200" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={area} fill="url(#homeFill)" />
+      <path d={d} fill="none" stroke="#FC5200" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="white" stroke="#FC5200" strokeWidth={1.5} />
+      ))}
+    </svg>
+  )
+}
+
+function HomepageHeatmap() {
+  const pattern = [0,80,100,60,0,90,70,100,50,0,80,100,100,60,0,0,30,90,100,80,70,100,50,0,80,100,90,60,100,80,0,90,100,70,50,80,90,0,60,100,100,80,70,100,50,0,90,100,80,60,0,100,90,70,100,0]
+  return (
+    <div className="flex gap-[2px]">
+      {Array.from({ length: 8 }).map((_, w) => (
+        <div key={w} className="flex flex-col gap-[2px]">
+          {Array.from({ length: 7 }).map((_, d) => {
+            const v = pattern[w * 7 + d] ?? 0
+            const bg = v === 0 ? 'bg-gray-100' : v <= 50 ? 'bg-accent/25' : v <= 80 ? 'bg-accent/50' : 'bg-accent'
+            return <div key={d} className={`w-[7px] h-[7px] rounded-[1px] ${bg}`} />
+          })}
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -690,7 +810,7 @@ export default function Home() {
       <Hero />
       <ActivityTicker />
       <HowItWorks />
-      <FeedPreview />
+      <ProgressPreview />
       <Squads />
       <WhyItWorks />
       <Numbers />

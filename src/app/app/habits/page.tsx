@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, X, Flame, Target } from 'lucide-react'
+import { MiniHeatmap } from '@/components/charts'
 
 interface Habit {
   id: number
@@ -140,8 +141,9 @@ export default function HabitsPage() {
       <div className="mb-6">
         <p className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-3">Activos</p>
         <div className="space-y-2">
-          {activeHabits.map((h) => (
+            {activeHabits.map((h) => (
             <motion.div key={h.id} className="bg-white border border-border rounded-xl px-4 py-3.5 flex items-center gap-3 shadow-sm" layout>
+              <MiniHeatmap completionRate={h.completionRate} />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                   <p className="text-sm font-semibold truncate">{h.name}</p>

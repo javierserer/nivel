@@ -4,17 +4,18 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Logo } from '@/components/shared'
 import { Flame, Trophy, Copy, Check, LogOut } from 'lucide-react'
+import { StreakHeatmap } from '@/components/charts'
 import Link from 'next/link'
 
 const SPRING = { type: 'spring' as const, stiffness: 80, damping: 18 }
 
 const STATS = [
   { label: 'Puntos totales', value: '12.480' },
-  { label: 'Hábitos', value: '847' },
-  { label: 'Vicios ganados', value: '94' },
-  { label: 'Duelos', value: '12' },
+  { label: 'Hábitos completados', value: '847' },
+  { label: 'Días perfectos', value: '38' },
+  { label: 'Duelos ganados', value: '12' },
   { label: 'Mejor racha', value: '32d' },
-  { label: 'Semanas', value: '14' },
+  { label: 'Semanas activo', value: '14' },
 ]
 
 const ACHIEVEMENTS = [
@@ -76,6 +77,15 @@ export default function ProfilePage() {
         </div>
         <p className="text-[10px] text-muted mt-1.5 tabular-nums">1.440 / 2.000 XP</p>
       </motion.div>
+
+      {/* Streak Heatmap */}
+      <div className="bg-white border border-border rounded-xl p-4 mb-6 shadow-sm">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-[10px] font-semibold text-muted uppercase tracking-widest">Actividad</p>
+          <span className="text-[10px] text-accent font-bold">84 días</span>
+        </div>
+        <StreakHeatmap weeks={14} size="sm" animated={false} />
+      </div>
 
       {/* Stats */}
       <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-3">Estadísticas</h2>

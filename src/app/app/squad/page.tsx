@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Flame, Heart, Swords, UserPlus } from 'lucide-react'
+import { ComparisonBars } from '@/components/charts'
 
 const MEMBERS = [
   { pos: 1, name: 'Carlos', initials: 'CA', pts: 1240, change: 0 },
@@ -108,6 +109,11 @@ export default function SquadPage() {
                   <span className="text-sm font-bold text-muted tabular-nums">{m.pts.toLocaleString()}</span>
                 </motion.div>
               ))}
+            </div>
+
+            <div className="bg-white border border-border rounded-xl p-4 mt-4 shadow-sm">
+              <p className="text-[10px] font-semibold text-muted uppercase tracking-widest mb-3">Esta semana</p>
+              <ComparisonBars members={MEMBERS.map(m => ({ name: m.name, pts: m.pts, isYou: m.isYou }))} />
             </div>
 
             <motion.button
