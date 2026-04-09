@@ -177,6 +177,9 @@ export default function Dashboard() {
         await supabase.from('habit_logs').delete().eq('habit_id', habit.id).eq('log_date', today).eq('user_id', user.id)
       }
       setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, log_id: null } : h))
+
+      const { data: freshProfile } = await supabase.from('profiles').select('level, xp, streak').eq('id', user.id).single()
+      if (freshProfile) setProfile(p => p ? { ...p, ...freshProfile } : p)
     }
   }
 
