@@ -20,7 +20,7 @@ export default function AccessPage() {
   )
 }
 
-type Step = 'invite' | 'email' | 'done' | 'waitlist' | 'waitlist-done'
+type Step = 'invite' | 'email' | 'done' | 'waitlist' | 'waitlist-done' | 'login'
 
 function AccessContent() {
   const searchParams = useSearchParams()
@@ -177,7 +177,7 @@ function AccessContent() {
         <Logo size="lg" />
       </div>
 
-      {step !== 'waitlist' && step !== 'waitlist-done' && (
+      {step !== 'waitlist' && step !== 'waitlist-done' && step !== 'login' && (
         <div className="flex items-center gap-2 mb-8">
           {['invite', 'email', 'done'].map((s, i) => (
             <div key={s} className="flex items-center gap-2">
@@ -233,8 +233,16 @@ function AccessContent() {
 
               <button
                 type="button"
+                onClick={() => { setStep('login'); setError(''); setEmail('') }}
+                className="w-full text-center text-xs text-accent font-medium hover:underline transition mt-1"
+              >
+                Ya tengo cuenta
+              </button>
+
+              <button
+                type="button"
                 onClick={() => { setStep('waitlist'); setError('') }}
-                className="w-full text-center text-[11px] text-gray-400 hover:text-muted transition mt-2"
+                className="w-full text-center text-[11px] text-gray-400 hover:text-muted transition mt-1"
               >
                 No tengo invitación
               </button>
@@ -299,6 +307,52 @@ function AccessContent() {
 
               <button type="button" onClick={() => setStep('invite')} className="w-full text-center text-xs text-muted hover:text-foreground transition">
                 Cambiar código de invitación
+              </button>
+            </motion.form>
+          )}
+
+          {step === 'login' && (
+            <motion.form
+              key="login"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={SPRING}
+              onSubmit={handleLogin}
+              className="space-y-4"
+            >
+              <div className="text-center mb-2">
+                <div className="w-14 h-14 rounded-2xl bg-surface border border-border flex items-center justify-center mx-auto mb-3">
+                  <Mail className="w-6 h-6 text-accent" />
+                </div>
+                <p className="text-base font-semibold">Entra con tu email</p>
+                <p className="text-xs text-muted mt-1">Te enviaremos un enlace mágico para entrar</p>
+              </div>
+
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); setError('') }}
+                placeholder="tu@email.com"
+                className="w-full px-4 py-3.5 bg-surface border border-border rounded-xl text-center text-base placeholder-gray-400 focus:outline-none focus:border-accent/40 transition"
+                autoFocus
+                autoComplete="email"
+                enterKeyHint="send"
+              />
+
+              {error && <p className="text-xs text-red-500 text-center">{error}</p>}
+
+              <motion.button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-xl bg-accent text-white font-bold text-sm transition disabled:opacity-50 flex items-center justify-center gap-2"
+                whileTap={{ scale: 0.97 }}
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Enviar enlace'}
+              </motion.button>
+
+              <button type="button" onClick={() => { setStep('invite'); setError('') }} className="w-full text-center text-xs text-muted hover:text-foreground transition">
+                Tengo código de invitación
               </button>
             </motion.form>
           )}
