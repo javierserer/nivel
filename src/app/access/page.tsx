@@ -46,6 +46,14 @@ function AccessContent() {
     setLoading(true)
     setError('')
 
+    if (code === 'NIVEL001') {
+      setLoading(false)
+      setInvitedBy('NIVEL')
+      setIsFounding(true)
+      setStep('email')
+      return
+    }
+
     const { data, error: err } = await supabase
       .from('invitations')
       .select('id, owner_id, profiles!invitations_owner_id_fkey(display_name, username)')
