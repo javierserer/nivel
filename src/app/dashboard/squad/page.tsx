@@ -198,7 +198,7 @@ export default function SquadPage() {
         <p className="text-sm text-muted mb-6 max-w-xs mx-auto">
           Crea un squad o pide un código a tus amigos para unirte.
         </p>
-        <a href="/app/profile" className="text-accent font-semibold text-sm">Ir a perfil para crear uno</a>
+        <a href="/dashboard/profile" className="text-accent font-semibold text-sm">Ir a perfil para crear uno</a>
       </div>
     )
   }

@@ -18,10 +18,10 @@ export async function GET(request: Request) {
           .single()
 
         if (!profile?.onboarding_done) {
-          return NextResponse.redirect(`${origin}/app/onboarding`)
+          return NextResponse.redirect(`${origin}/dashboard/onboarding`)
         }
       }
-      return NextResponse.redirect(`${origin}/app`)
+      return NextResponse.redirect(`${origin}/dashboard`)
     }
   }
 

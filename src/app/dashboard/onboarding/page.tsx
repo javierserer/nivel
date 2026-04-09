@@ -234,7 +234,7 @@ export default function OnboardingPage() {
     }
 
     setLoading(false)
-    router.push('/app')
+    router.push('/dashboard')
   }
 
   return (

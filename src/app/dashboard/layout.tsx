@@ -7,16 +7,16 @@ import { Home, Target, Users, BarChart3, User } from 'lucide-react'
 import { registerServiceWorker } from '@/lib/sw'
 
 const tabs = [
-  { href: '/app', label: 'Feed', icon: Home },
-  { href: '/app/habits', label: 'Hábitos', icon: Target },
-  { href: '/app/squad', label: 'Squad', icon: Users },
-  { href: '/app/recap', label: 'Progreso', icon: BarChart3 },
-  { href: '/app/profile', label: 'Perfil', icon: User },
+  { href: '/dashboard', label: 'Feed', icon: Home },
+  { href: '/dashboard/habits', label: 'Hábitos', icon: Target },
+  { href: '/dashboard/squad', label: 'Squad', icon: Users },
+  { href: '/dashboard/recap', label: 'Progreso', icon: BarChart3 },
+  { href: '/dashboard/profile', label: 'Perfil', icon: User },
 ]
 
 export default function AppLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const isOnboarding = pathname === '/app/onboarding'
+  const isOnboarding = pathname === '/dashboard/onboarding'
 
   useEffect(() => { registerServiceWorker() }, [])
 

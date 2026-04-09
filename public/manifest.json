@@ -2,7 +2,7 @@
   "name": "NIVEL",
   "short_name": "NIVEL",
   "description": "Trackea hábitos. Gana puntos. Compite con tu squad.",
-  "start_url": "/app",
+  "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#FC5200",

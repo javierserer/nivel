@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const pathname = request.nextUrl.pathname
 
-  if (!user && pathname.startsWith('/app')) {
+  if (!user && pathname.startsWith('/dashboard')) {
     const url = request.nextUrl.clone()
     url.pathname = '/access'
     return NextResponse.redirect(url)
@@ -34,11 +34,11 @@ export async function middleware(request: NextRequest) {
 
   if (user && pathname === '/access') {
     const url = request.nextUrl.clone()
-    url.pathname = '/app'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
-  if (user && pathname.startsWith('/app') && pathname !== '/app/onboarding') {
+  if (user && pathname.startsWith('/dashboard') && pathname !== '/dashboard/onboarding') {
     const { data: profile } = await supabase
       .from('profiles')
       .select('onboarding_done')
@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
 
     if (profile && !profile.onboarding_done) {
       const url = request.nextUrl.clone()
-      url.pathname = '/app/onboarding'
+      url.pathname = '/dashboard/onboarding'
       return NextResponse.redirect(url)
     }
   }
@@ -56,5 +56,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/app/:path*', '/access'],
+  matcher: ['/dashboard/:path*', '/access'],
 }

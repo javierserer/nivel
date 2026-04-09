@@ -119,7 +119,7 @@ function AccessContent() {
     setLoading(false)
 
     if (signUpData.session) {
-      router.push('/app/onboarding')
+      router.push('/dashboard/onboarding')
     } else {
       setStep('done')
     }

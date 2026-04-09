@@ -235,7 +235,7 @@ export default function Dashboard() {
         {habits.length === 0 && (
           <div className="text-center py-8">
             <p className="text-sm text-muted mb-2">Aún no tienes hábitos</p>
-            <a href="/app/habits" className="text-sm text-accent font-semibold">Añadir hábitos</a>
+            <a href="/dashboard/habits" className="text-sm text-accent font-semibold">Añadir hábitos</a>
           </div>
         )}
         <div className="space-y-2">
@@ -273,7 +273,7 @@ export default function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Tu squad</h2>
-            <a href="/app/squad" className="text-[10px] text-accent font-semibold flex items-center gap-0.5">
+            <a href="/dashboard/squad" className="text-[10px] text-accent font-semibold flex items-center gap-0.5">
               Ver todo <ChevronRight className="w-3 h-3" />
             </a>
           </div>

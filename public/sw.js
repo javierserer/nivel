@@ -1,5 +1,5 @@
 const CACHE_NAME = 'nivel-v1'
-const STATIC_ASSETS = ['/', '/app', '/manifest.json', '/favicon.svg']
+const STATIC_ASSETS = ['/', '/dashboard', '/manifest.json', '/favicon.svg']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -41,14 +41,14 @@ self.addEventListener('push', (event) => {
       icon: '/icons/icon-192.svg',
       badge: '/icons/icon-192.svg',
       tag: data.tag || 'default',
-      data: { url: data.url || '/app' },
+      data: { url: data.url || '/dashboard' },
     })
   )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = event.notification.data?.url || '/app'
+  const url = event.notification.data?.url || '/dashboard'
   event.waitUntil(
     self.clients.matchAll({ type: 'window' }).then((clients) => {
       for (const client of clients) {
