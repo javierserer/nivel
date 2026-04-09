@@ -51,6 +51,7 @@ export default function HabitsPage() {
   const [suggestions, setSuggestions] = useState<CatalogHabit[]>([])
   const [browseCategory, setBrowseCategory] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLDivElement>(null)
 
   const fetchHabits = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
@@ -104,6 +105,9 @@ export default function HabitsPage() {
     setBrowseCategory(null)
     setShowAdd(true)
     setSuggestions([])
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 
   const toggleActive = async (id: string, currentActive: boolean) => {
@@ -170,7 +174,12 @@ export default function HabitsPage() {
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl font-bold">Hábitos</h1>
         <motion.button
-          onClick={() => { setShowAdd(!showAdd); setBrowseCategory(null) }}
+          onClick={() => {
+            const opening = !showAdd
+            setShowAdd(opening)
+            setBrowseCategory(null)
+            if (opening) requestAnimationFrame(() => inputRef.current?.focus())
+          }}
           className={`w-9 h-9 rounded-xl flex items-center justify-center transition shadow-sm ${
             showAdd ? 'bg-gray-100 text-gray-600' : 'bg-white border border-border text-muted'
           }`}
@@ -183,6 +192,7 @@ export default function HabitsPage() {
         {activeHabits.length} activos · Potencial diario: <span className="text-accent font-semibold">{totalDaily} pts</span>
       </p>
 
+      <div ref={formRef} />
       <AnimatePresence>
         {showAdd && (
           <motion.div
@@ -202,7 +212,6 @@ export default function HabitsPage() {
                   onChange={(e) => handleNameChange(e.target.value)}
                   placeholder="Busca o escribe un hábito..."
                   className="w-full pl-10 pr-4 py-3 bg-surface border border-border rounded-xl text-sm placeholder-gray-400 focus:outline-none focus:border-accent/40 transition"
-                  autoFocus
                 />
                 <AnimatePresence>
                   {suggestions.length > 0 && (
