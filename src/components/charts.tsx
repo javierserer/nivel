@@ -334,23 +334,23 @@ export function WeeklyShareCard({
       className={`bg-white rounded-2xl border border-border shadow-xl overflow-hidden ${compact ? 'w-[240px]' : 'w-[300px]'}`}
       {...wrapProps}
     >
-      <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 px-5 py-4 text-white">
+      <div className="bg-surface px-5 py-4 border-b border-border">
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-extrabold tracking-tight">
             <span className="text-accent">N</span>IVEL
           </span>
-          <span className="text-[10px] text-gray-400 font-medium">Semana {week}</span>
+          <span className="text-[10px] text-muted font-medium">Semana {week}</span>
         </div>
         <div className="flex items-baseline gap-2 mb-1">
           <span className="text-3xl font-extrabold text-accent">{level}</span>
-          <span className="text-xs text-gray-400">nivel</span>
+          <span className="text-xs text-muted">nivel</span>
         </div>
         <div className="flex items-center gap-3 text-[11px]">
           <span className="text-accent font-bold">🔥 {streak}d</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-white font-semibold">+{pts} pts</span>
-          <span className="text-gray-400">·</span>
-          <span className="text-gray-300">{pct}%</span>
+          <span className="text-gray-300">·</span>
+          <span className="text-foreground font-semibold">+{pts} pts</span>
+          <span className="text-gray-300">·</span>
+          <span className="text-muted">{pct}%</span>
         </div>
       </div>
 

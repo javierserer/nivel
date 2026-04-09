@@ -73,7 +73,7 @@ export default function RecapPage() {
             dailyPts={THIS_WEEK.dailyPts}
           />
           <motion.button
-            className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center text-white/60 hover:text-white hover:bg-white/20 transition"
+            className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-gray-200/50 flex items-center justify-center text-muted hover:text-foreground hover:bg-gray-200 transition"
             whileTap={{ scale: 0.9 }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
