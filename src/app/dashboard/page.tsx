@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [earnedToast, setEarnedToast] = useState<string | null>(null)
   const [kudosGiven, setKudosGiven] = useState<Set<string>>(new Set())
   const [weeklyPts, setWeeklyPts] = useState<number[]>([0, 0, 0, 0, 0, 0, 0])
-  const [heatmapData, setHeatmapData] = useState<number[]>([])
+  const [heatmapData, setHeatmapData] = useState<number[]>(Array.from({ length: 84 }, () => 0))
   const [justCompleted, setJustCompleted] = useState<string | null>(null)
 
   const today = new Date().toISOString().split('T')[0]
@@ -134,6 +134,26 @@ export default function Dashboard() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  const updateChartsLocally = (pts: number, added: boolean) => {
+    const todayIdx = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1
+    setWeeklyPts(prev => {
+      const next = [...prev]
+      next[todayIdx] = Math.max(0, next[todayIdx] + (added ? pts : -pts))
+      return next
+    })
+    const todayOffset = Math.floor((Date.now() - new Date(new Date().toISOString().split('T')[0] + 'T00:00:00').getTime() + 84 * 86400000) / 86400000)
+    const heatIdx = Math.min(83, Math.max(0, 83 - (84 - todayOffset)))
+    setHeatmapData(prev => {
+      if (prev.length === 0) return prev
+      const next = [...prev]
+      const maxDaily = Math.max(habits.length, 1) * 50
+      const currentPts = (next[83] / 100) * maxDaily
+      const newPts = Math.max(0, currentPts + (added ? pts : -pts))
+      next[83] = newPts === 0 ? 0 : Math.min(100, Math.round((newPts / maxDaily) * 100))
+      return next
+    })
+  }
+
   const toggleHabit = async (habit: HabitWithLog) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
@@ -167,6 +187,7 @@ export default function Dashboard() {
         setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, log_id: data.id } : h))
       }
 
+      updateChartsLocally(habit.pts, true)
       const { data: freshProfile } = await supabase.from('profiles').select('level, xp, streak').eq('id', user.id).single()
       if (freshProfile) setProfile(p => p ? { ...p, ...freshProfile } : p)
     } else {
@@ -178,6 +199,7 @@ export default function Dashboard() {
       }
       setHabits(prev => prev.map(h => h.id === habit.id ? { ...h, log_id: null } : h))
 
+      updateChartsLocally(habit.pts, false)
       const { data: freshProfile } = await supabase.from('profiles').select('level, xp, streak').eq('id', user.id).single()
       if (freshProfile) setProfile(p => p ? { ...p, ...freshProfile } : p)
     }
@@ -342,30 +364,26 @@ export default function Dashboard() {
       </div>
 
       {/* Weekly points chart */}
-      {weeklyPts.some(p => p > 0) && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <BarChart3 className="w-3.5 h-3.5 text-accent" />
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Esta semana</h2>
-          </div>
-          <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
-            <WeeklyBars data={weeklyPts} maxHeight={60} />
-          </div>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <BarChart3 className="w-3.5 h-3.5 text-accent" />
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Esta semana</h2>
         </div>
-      )}
+        <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
+          <WeeklyBars data={weeklyPts} maxHeight={60} />
+        </div>
+      </div>
 
       {/* Activity heatmap */}
-      {heatmapData.length > 0 && (
-        <div className="mb-6">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarDays className="w-3.5 h-3.5 text-accent" />
-            <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Actividad</h2>
-          </div>
-          <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
-            <StreakHeatmap data={heatmapData} weeks={12} fullWidth animated />
-          </div>
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarDays className="w-3.5 h-3.5 text-accent" />
+          <h2 className="text-xs font-semibold text-muted uppercase tracking-widest">Actividad</h2>
         </div>
-      )}
+        <div className="bg-white border border-border rounded-xl p-4 shadow-sm">
+          <StreakHeatmap data={heatmapData} weeks={12} fullWidth animated={false} />
+        </div>
+      </div>
 
       {/* Squad feed */}
       {feed.length > 0 && (
